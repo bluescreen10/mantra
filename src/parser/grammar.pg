@@ -1,0 +1,242 @@
+# $Id$
+
+grammar mantra::Grammar is PCT::Grammar;
+
+rule TOP {
+    <class_definition>
+    {*}
+}
+
+# Class grammar definitions
+rule class_definition {
+   'class' <class_identifier>
+   [ '<' <superclass=class_identifier> [ ',' <superclass=class_identifier> ]* '>' ]?
+   <method_definition>*
+   {*}
+}
+
+# Indentifiers
+token class_identifier {
+    <namespace>*
+    [
+      <class_name=capitalized_word>
+      || <.panic: "Class names must be capitalized">
+    ]
+    {*}
+}
+
+token namespace {
+    [
+      [ <capitalized_word>
+        || <.panic: "Namespaces must be capitalized">
+      ] '.'
+    ]
+    {*}
+}
+
+token capitalized_word {
+    <uppercase_letter> [ \w | \d ]*
+}
+
+token non_capitalized_word {
+    <lowercase_letter> [ \w | \d ]*
+}
+
+token lowercase_letter {
+    <[a..z]>
+}
+
+token uppercase_letter {
+    <[A..Z]>
+}
+
+# Method defintion
+rule method_definition {
+   <message_type> '['
+       <statement_list>
+   ']'
+   {*}
+}
+
+token message_type {
+    <private>?
+    [
+      | <keyword_message> {*} #= keyword_message
+      | <binary_message>  {*} #= binary_message
+      | <unary_message>   {*} #= unary_message
+    ]
+}
+
+token private {
+    '<!>'
+}
+
+token unary_message {
+   <non_capitalized_word>
+   {*}
+}
+
+rule binary_message {
+   <binary_method_name> <method_argument>
+   {*}
+}
+
+rule keyword_message {
+   [ <keyword_method_name> <method_argument> ]+
+   {*}
+}
+
+# TODO: Improve method argument defition
+token method_argument {
+    <local_variable>
+}
+
+# Statement list
+rule statement_list {
+    <statement>? ['.' <statement>? ]*
+    {*}
+}
+
+# Statement
+rule statement {
+    | <return_statement> {*} #= return_statement
+    | <expression>       {*} #= expression
+}
+
+rule expression {
+    | <assignment>       {*} #= assignment
+    | <basic_expression> {*} #= basic_expression
+    | <primitive>        {*} #= primitive
+}
+
+rule basic_expression {
+    <primary> 
+      [ 
+       | <keyword_selector>    {*} #= keyword
+       | [ <unary_selector> ]+ {*} #= unary
+       ||                      {*} #= no_message
+      ]
+}
+
+rule message {
+    | <keyword_selector> {*} #= keyword
+    | [ <unary_selector> ]+  {*} #= unary
+}
+
+token unary_selector {
+   <non_capitalized_word>
+   {*}
+}
+
+rule keyword_selector {
+     [ <keyword_method_name> <keyword_argument> ]+
+     {*}
+}
+
+rule keyword_argument {
+     <primary> [ <unary_selector> ]*
+     {*}
+}
+
+rule primary {
+    | <variable>   {*} #= variable
+    | <literal>    {*} #= literal
+}
+
+rule assignment {
+    <assignment_target> ':' <basic_expression>
+    {*}
+}
+
+rule assignment_target {
+    <!reserved_words><variable>
+    {*}
+}
+
+token variable {
+    | <pseudo_variable_self>         {*} #= pseudo_variable_self
+    | <instance_variable_identifier> {*} #= instance_variable_identifier
+    | <class_variable_identifier>    {*} #= class_variable_identifier
+    | <local_variable>               {*} #= local_variable
+}
+
+token pseudo_variable_self {
+    'self'
+    {*}
+}
+
+token instance_variable_identifier {
+    '@' <non_capitalized_word>
+    {*}
+}
+
+token class_variable_identifier {
+    '@' <capitalized_word>
+    {*}
+}
+
+token local_variable {
+    <non_capitalized_word>
+    {*}
+}
+
+rule return_statement {
+    '^' <basic_expression>
+    # TODO: Match up to block end or '.' and throw
+    # the following error
+    #<.panic: "Invalid expression as return type">
+    {*}
+}
+
+# Tokens
+
+token reserved_words {
+    [ 'true' | 'false' | 'null' | 'self' | 'class' ]
+}
+
+token binary_method_name {
+    [ '!' | '%' | '+' | '-' | '/' | '<' | '=' | '>'
+    | '?' | '@' | '\\' | '~' | '|' | '*' ]+
+}
+
+token keyword_method_name {
+    <non_capitalized_word> ':'
+}
+
+token literal {
+   | \' <string_literal: "'"> \'  {*} #= string
+   | <number_literal>             {*} #= number
+}
+
+token <number_literal> {
+   ['-']? <absolute_number>
+   {*}
+}
+
+token absolute_number {
+   | <absolute_float>   {*} #= absolute_float
+   | <absolute_integer> {*} #= absolute_integer
+}
+
+token absolute_integer {
+   \d+
+   {*}
+}
+
+token absolute_float {
+   \d+ '.' \d+
+   {*}
+}
+
+rule primitive {
+   '{' <non_capitalized_word> '(' [ <primary> [ ',' <primary> ]*]?  ')'  '}'
+   {*}
+}
+
+
+##  this <ws> rule treats # as "comment to eol"
+##  you may want to replace it with something appropriate
+token ws {
+    [ '#' \N* \n? | \s+ ]*
+}
+
