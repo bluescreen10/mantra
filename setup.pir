@@ -72,7 +72,6 @@ src/gen_actions.pir
 src/gen_compiler.pir
 src/gen_grammar.pir
 src/gen_runtime.pir
-src/builtins/say.pir
 SOURCES
     $S0 = pop $P6
     $P5['mantra/mantra.pbc'] = $P6
