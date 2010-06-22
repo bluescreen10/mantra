@@ -1,4 +1,4 @@
-class Startup
+class my.namespace.Startup
 
 main [
   a: 'variable'.

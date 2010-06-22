@@ -1,39 +1,16 @@
+# $Id$
+
 =head1 TITLE
 
 mantra.pir - A mantra compiler.
 
 =head2 Description
 
-This is the base file for the mantra compiler.
-
-This file includes the parsing and grammar rules from
-the src/ directory, loads the relevant PGE libraries,
-and registers the compiler under the name 'mantra'.
+This is the entry point for the mantra compiler.
 
 =head2 Functions
 
 =over 4
-
-=item onload()
-
-Creates the mantra compiler using a C<PCT::HLLCompiler>
-object.
-
-=cut
-
-.namespace [ 'mantra::Compiler' ]
-
-#.loadlib 'mantra_group'
-
-.sub 'onload' :anon :load :init
-    load_bytecode 'PCT.pbc'
-
-    $P0 = get_hll_global ['PCT'], 'HLLCompiler'
-    $P1 = $P0.'new'()
-    $P1.'language'('mantra')
-    $P1.'parsegrammar'('mantra::Grammar')
-    $P1.'parseactions'('mantra::Grammar::Actions')
-.end
 
 =item main(args :slurpy)  :main
 
@@ -45,13 +22,11 @@ to the mantra compiler.
 .sub 'main' :main
     .param pmc args
 
+    load_language 'mantra'
+
     $P0 = compreg 'mantra'
     $P1 = $P0.'command_line'(args)
 .end
-
-.include 'src/gen_builtins.pir'
-.include 'src/gen_grammar.pir'
-.include 'src/gen_actions.pir'
 
 =back
 
