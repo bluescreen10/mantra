@@ -42,6 +42,7 @@ object.
 .include 'src/gen_actions.pir'
 .include 'src/gen_compiler.pir'
 .include 'src/gen_runtime.pir'
+.include 'src/core/class.pir'
 
 =back
 
