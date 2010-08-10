@@ -26,6 +26,7 @@ to the mantra compiler.
 
     $P0 = compreg 'mantra'
     $P1 = $P0.'command_line'(args)
+
 .end
 
 =back

@@ -7,14 +7,20 @@ This is the grammar for mantra in Perl 6 rules.
 grammar mantra::Grammar is HLL::Grammar;
 
 token TOP {
+    <.compiler_init>
     <class_definition>
     [ $ || <.panic: 'Syntax error'> ]
+}
+
+token compiler_init {
+    <?>
 }
 
 ## Class grammar definitions
 
 rule class_definition {
     [ 'class' || <.panic: 'Syntax Error'> ]
+    <.begin_class>
 
     <class_name=class_identifier>
 
@@ -22,7 +28,11 @@ rule class_definition {
         [ ',' <superclass=class_identifier> ]* '>'
     ]?
 
-   <method_definition>*
+    <method_definition>*
+}
+
+token begin_class {
+    <?>
 }
 
 ## Indentifiers
@@ -34,195 +44,196 @@ token class_identifier {
 ## General grammars
 
 token identifier {
-    \w [ \w | \d ]* 
+    <alpha><alnum>*
 }
 
 ## Method defintion
 
 rule method_definition {
-   <message_type> '['
-       <statement_list>
-   ']'
-   {*}
+    <begin_method_definition>
+    '[' <statement_list> ']'
 }
 
-token message_type {
-    <private>?
-    [
-      | <keyword_message> {*} #= keyword_message
-      | <binary_message>  {*} #= binary_message
-      | <unary_message>   {*} #= unary_message
-    ]
+token begin_method_definition {
+    | <keyword_method>
+    | <binary_method>
+    | <unary_method>
 }
 
-token private {
-    '<!>'
+token keyword_method {
+    <method_name=ident> ':' \h* <param=ident> \h+
+        [ <method_name=ident> ':' \h* <param=ident> ]*
 }
 
-token unary_message {
-   <identifier>
-   {*}
+token binary_method {
+    <method_name=binary_method_name> \h* <param=ident>
 }
 
-rule binary_message {
-   <binary_method_name> <method_argument>
-   {*}
+token unary_method {
+    <method_name=ident>
 }
 
-rule keyword_message {
-   [ <keyword_method_name> <method_argument> ]+
-   {*}
-}
+# token private {
+#     '<!>'
+# }
 
-# TODO: Improve method argument defition
-token method_argument {
-    <local_variable>
-}
+# # TODO: Improve method argument defition
+# token method_argument {
+#     <local_variable>
+# }
 
 # Statement list
 rule statement_list {
-    <statement>? ['.' <statement>? ]*
-    {*}
+     <statement>? ['.' <statement>? ]*
 }
 
 # Statement
 rule statement {
-    | <return_statement> {*} #= return_statement
-    | <expression>       {*} #= expression
-}
-
-rule expression {
-    | <assignment>       {*} #= assignment
-    | <basic_expression> {*} #= basic_expression
-    | <primitive>        {*} #= primitive
-}
-
-rule basic_expression {
-    <primary> 
-      [ 
-       | <keyword_selector>    {*} #= keyword
-       | [ <unary_selector> ]+ {*} #= unary
-       ||                      {*} #= no_message
-      ]
-}
-
-rule message {
-    | <keyword_selector> {*} #= keyword
-    | [ <unary_selector> ]+  {*} #= unary
-}
-
-token unary_selector {
-   <identifier>
-   {*}
-}
-
-rule keyword_selector {
-     [ <keyword_method_name> <keyword_argument> ]+
-     {*}
-}
-
-rule keyword_argument {
-     <primary> [ <unary_selector> ]*
-     {*}
-}
-
-rule primary {
-    | <variable>   {*} #= variable
-    | <literal>    {*} #= literal
-}
-
-rule assignment {
-    <assignment_target> ':' <basic_expression>
-    {*}
-}
-
-rule assignment_target {
-    <!reserved_words><variable>
-    {*}
-}
-
-token variable {
-    | <pseudo_variable_self>         {*} #= pseudo_variable_self
-    | <instance_variable_identifier> {*} #= instance_variable_identifier
-    | <class_variable_identifier>    {*} #= class_variable_identifier
-    | <local_variable>               {*} #= local_variable
-}
-
-token pseudo_variable_self {
-    'self'
-    {*}
-}
-
-token instance_variable_identifier {
-    '@' <indentifier>
-    {*}
-}
-
-token class_variable_identifier {
-    '@@' <identifier>
-    {*}
-}
-
-token local_variable {
-    <identifier>
-    {*}
+     <expression>
 }
 
 rule return_statement {
-    '^' <basic_expression>
-    # TODO: Match up to block end or '.' and throw
-    # the following error
-    #<.panic: "Invalid expression as return type">
-    {*}
+     '^' <basic_expression>
 }
 
-# Tokens
-
-token reserved_words {
-    [ 'true' | 'false' | 'null' | 'self' | 'class' ]
+rule expression {
+    | <assignment>
+    | <return_statement>
+    | <basic_expression>
 }
+
+rule basic_expression {
+    | <primitive>
+    | <message>
+    | <primary>
+}
+
+rule message {
+    <primary>
+    [
+    | <keyword_message>
+    | <binary_message>
+    | <unary_method>
+    ]
+}
+
+token binary_message {
+    <method_name=binary_method_name> \h* <primary>
+}
+
+token keyword_message {
+    <method_name=ident> ':' \h* <primary>
+    [ <method_name=ident> ':' \h* <primary> ]*
+}
+
+
+# token unary_selector {
+#    <identifier>
+#    {*}
+# }
+
+# rule keyword_selector {
+#      [ <keyword_method_name> <keyword_argument> ]+
+#      {*}
+# }
+
+# rule keyword_argument {
+#      <primary> [ <unary_selector> ]*
+#      {*}
+# }
+
+rule primary {
+     | <variable>
+     | <literal>
+}
+
+token variable {
+    | <pseudo_variable_self>
+    | <local_variable>
+}
+
+
+token assignment {
+     <name=ident> ':' \h* <basic_expression>
+}
+
+# rule assignment_target {
+#     <!reserved_words><variable>
+#     {*}
+# }
+
+
+token pseudo_variable_self {
+    'self'
+}
+
+# token instance_variable_identifier {
+#     '@' <indentifier>
+#     {*}
+# }
+
+# token class_variable_identifier {
+#     '@@' <identifier>
+#     {*}
+# }
+
+token local_variable {
+     <name=ident>
+}
+
+
+# # Tokens
+
+# token reserved_words {
+#     [ 'true' | 'false' | 'null' | 'self' | 'class' ]
+# }
 
 token binary_method_name {
-    [ '!' | '%' | '+' | '-' | '/' | '<' | '=' | '>'
-    | '?' | '@' | '\\' | '~' | '|' | '*' ]+
+     [ '!' | '%' | '+' | '-' | '/' | '<' | '=' | '>'
+     | '?' | '@' | '\\' | '~' | '|' | '*' ]+
 }
 
-token keyword_method_name {
-    <identifier> ':'
-}
+# token keyword_method_name {
+#     <identifier> ':'
+# }
 
 token literal {
-   | \' <string_literal> \'  {*} #= string
-   | <number_literal>        {*} #= number
+     <string_constant>
+#    | <number_literal>
 }
+
+token string_constant { <quote> }
+
+proto token quote { <...> }
+token quote:sym<'> { <?[']> <quote_EXPR: ':q'> }
+#token quote:sym<"> { <?["]> <quote_EXPR: ':qq'> }
 
 token string_literal {
-     <[\w\d\"\\]>+
+    [\w|\d|\;]+
 }
 
-token <number_literal> {
-   <absolute_number>
-#   {*}
-}
+# token <number_literal> {
+#    <absolute_number>
+# #   {*}
+# }
 
-token absolute_number {
-   | <absolute_float>   {*} #= absolute_float
-   | <absolute_integer> {*} #= absolute_integer
-}
+# token absolute_number {
+#    | <absolute_float>   {*} #= absolute_float
+#    | <absolute_integer> {*} #= absolute_integer
+# }
 
-token absolute_integer {
-   \d+
-   {*}
-}
+# token absolute_integer {
+#    \d+
+#    {*}
+# }
 
-token absolute_float {
-   \d+ '.' \d+
-   {*}
-}
+# token absolute_float {
+#    \d+ '.' \d+
+#    {*}
+# }
 
-rule primitive {
-   '{' <identifier> '(' [ <primary> [ ',' <primary> ]*]?  ')'  '}'
-   {*}
+token primitive {
+    '{' <identifier=ident> '(' [ <primary> [ ',' <primary> ]*]?  ')'  '}'
 }
 
 
@@ -235,15 +246,15 @@ token ws {
 
 ## Operators
 
-INIT {
-    mantra::Grammar.O(':prec<u>, :assoc<left>',  '%multiplicative');
-    mantra::Grammar.O(':prec<t>, :assoc<left>',  '%additive');
-}
+# INIT {
+#     mantra::Grammar.O(':prec<u>, :assoc<left>',  '%multiplicative');
+#     mantra::Grammar.O(':prec<t>, :assoc<left>',  '%additive');
+# }
 
-#token circumfix:sym<( )> { '(' <.ws> <EXPR> ')' }
+# #token circumfix:sym<( )> { '(' <.ws> <EXPR> ')' }
 
-#token infix:sym<*>  { <sym> <O('%multiplicative, :pirop<mul>')> }
-#token infix:sym</>  { <sym> <O('%multiplicative, :pirop<div>')> }
+# #token infix:sym<*>  { <sym> <O('%multiplicative, :pirop<mul>')> }
+# #token infix:sym</>  { <sym> <O('%multiplicative, :pirop<div>')> }
 
-#token infix:sym<+>  { <sym> <O('%additive, :pirop<add>')> }
-#token infix:sym<->  { <sym> <O('%additive, :pirop<sub>')> }
+# #token infix:sym<+>  { <sym> <O('%additive, :pirop<add>')> }
+# #token infix:sym<->  { <sym> <O('%additive, :pirop<sub>')> }

@@ -6,8 +6,6 @@ class.pir -- class related functions
 
 =cut
 
-.namespace []
-
 .sub '!create_class'
      .param string classname
      .param pmc parents :slurpy
@@ -26,4 +24,20 @@ class.pir -- class related functions
       iter_end:
 
      .return ()
+.end
+
+.sub '!call_method'
+     .param pmc reciever
+     .param string method_name
+     .param pmc arguments :slurpy :optional
+#     "say"("reciever:")
+#     "say"(reciever)
+#     "say"("method name:")
+#     "say"(method_name)
+#     "say"("arguments:")
+#     "say"(arguments)
+ 
+     $P3 = find_method reciever, method_name
+     .tailcall reciever.$P3(arguments :flat)
+
 .end
