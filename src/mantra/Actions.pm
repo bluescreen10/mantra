@@ -172,19 +172,47 @@ method expression($/) {
 }
 
 method message($/) {
-    my $past := PAST::Op.new( :name('!call_method'),
-                              :pasttype('call'),
-                              :node($/) );
-    $past.push($<primary>.ast);
+    my $past;
 
     if $<unary_method> {
-        $past.push(PAST::Val.new( :returns<String>,
-                                  :value($<unary_method>) ) );
+        # self message1 message2;
+        # (self message1) message2
+        my $previous := 0;
+        my $count := 0;
+        for $<unary_method> {
+            say("Unary:"~$_~" count:"~$count);
+            $count++;
+            my $message := PAST::Val.new( :returns<String>,
+                                          :value($_) );
+            if $previous {
+                say("previ:"~$previous);
+                #$previous;
+            } else {
+                $past := PAST::Node.new();
+                my $op := PAST::Op.new( :name('!call_method'),
+                                        :pasttype('call'),
+                                        :node($/) );
+                $op.push($<primary>.ast);
+                say("mess:"~$_);
+                $op.push($message);
+                $past.push($op);
+                say("passed here");
+                $previous := $past;
+            }
+        }
     } elsif $<binary_message> {
+        $past := PAST::Op.new( :name('!call_method'),
+                               :pasttype('call'),
+                               :node($/) );
+        $past.push($<primary>.ast);
         $past.push(PAST::Val.new( :returns<String>,
                                   :value($<binary_message><method_name>) ) );
         $past.push($<binary_message><primary>.ast);
     } elsif $<keyword_message> {
+        $past := PAST::Op.new( :name('!call_method'),
+                               :pasttype('call'),
+                               :node($/) );
+        $past.push($<primary>.ast);
         $past.push(PAST::Val.new( :returns<String>,
                                   :value(pir::join(':',$<keyword_message><method_name>)~':') ) );
         for $<keyword_message><primary> {

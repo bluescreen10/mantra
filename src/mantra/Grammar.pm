@@ -113,7 +113,7 @@ rule message {
     [
     | <keyword_message>
     | <binary_message>
-    | <unary_method>
+    | <unary_method>+ <binary_message>* <keyword_message>?
     ]
 }
 

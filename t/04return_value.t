@@ -18,5 +18,6 @@ firstTest [
 ]
 
 returnSelf [
+    'hola'
 ]
 
