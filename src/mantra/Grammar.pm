@@ -111,9 +111,9 @@ rule basic_expression {
 rule message {
     <primary>
     [
-    | <keyword_message>
-    | <binary_message>
-    | <unary_method>+ <binary_message>* <keyword_message>?
+    | <keyword_first=keyword_message>
+    | <binary_first=binary_message>
+    | <unary_first=unary_method>+ <binary_second=binary_message>* <keyword_thrid=keyword_message>?
     ]
 }
 
