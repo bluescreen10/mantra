@@ -24,11 +24,9 @@ rule class_definition {
 
     <class_name=class_identifier>
 
-    [ '<' <superclass=class_identifier>
-        [ ',' <superclass=class_identifier> ]* '>'
-    ]?
+    [ '<' <superclass=class_identifier> ** ',' '>' ]?
 
-    <method_definition>*
+    '{' ~ '}' <method_definition>*
 }
 
 token begin_class {
@@ -51,7 +49,7 @@ token identifier {
 
 rule method_definition {
     <begin_method_definition>
-    '[' <statement_list> ']'
+    '{' ~ '}' <statement_list>
 }
 
 token begin_method_definition {
@@ -73,23 +71,15 @@ token unary_method {
     <method_name=ident>
 }
 
-# token private {
-#     '<!>'
-# }
-
-# # TODO: Improve method argument defition
-# token method_argument {
-#     <local_variable>
-# }
-
 # Statement list
 rule statement_list {
-     <statement>? ['.' <statement>? ]*
+    [ <statement> ** '.' ]*
 }
 
 # Statement
 rule statement {
-     <expression>
+    | <expression>
+    | '.'
 }
 
 rule return_statement {
@@ -113,17 +103,43 @@ rule message {
     [
     | <keyword_first=keyword_message>
     | <binary_first=binary_message>
-    | <unary_first=unary_method>+ <binary_second=binary_message>* <keyword_thrid=keyword_message>?
+    | <unary_first=unary_method>+ <binary_second=binary_message>* <keyword_third=keyword_message>?
     ]
 }
 
 token binary_message {
-    <method_name=binary_method_name> \h* <primary>
+    <method_name=binary_method_name> <ws>
+    <primary>
+        [ \h* <unary_method>
+             [
+             | <?before <.ws> \w+ ':'>
+             | <?before '.'>
+             | <?before \s+>
+             ]
+        ]*
 }
 
 token keyword_message {
-    <method_name=ident> ':' \h* <primary>
-    [ <method_name=ident> ':' \h* <primary> ]*
+    <method_name=ident> ':' <ws> <keyword_argument>
+    [ <ws> <method_name=ident> ':' <ws> <keyword_argument> ]*
+}
+
+token keyword_argument {
+    <primary>
+        [ \h* <unary_method>
+              [
+              | <?before \w+ ':' >
+              | <?before \s+>
+              | <?before '.'>
+              ]
+        ]*
+        [ \h* <binary_message>
+              [
+              | <?before \w+ ':'>
+              | <?before \h*>
+              | <?before '.'>
+              ]
+        ]*
 }
 
 
@@ -132,19 +148,10 @@ token keyword_message {
 #    {*}
 # }
 
-# rule keyword_selector {
-#      [ <keyword_method_name> <keyword_argument> ]+
-#      {*}
-# }
-
-# rule keyword_argument {
-#      <primary> [ <unary_selector> ]*
-#      {*}
-# }
-
 rule primary {
      | <variable>
      | <literal>
+     | '(' ~ ')' <basic_expression>
 }
 
 token variable {
@@ -233,7 +240,7 @@ token string_literal {
 # }
 
 token primitive {
-    '{' <identifier=ident> '(' [ <primary> [ ',' <primary> ]*]?  ')'  '}'
+    '<' <identifier=ident> '(' [ <primary> [ ',' <primary> ]*]?  ')'  '>'
 }
 
 
@@ -241,7 +248,7 @@ token primitive {
 ##  you may want to replace it with something appropriate
 token ws {
     <!ww>
-    [ '#' \N* \n? | \s+ ]*
+    [ '#' \N* \n? | \s+ | \n+ ]*
 }
 
 ## Operators

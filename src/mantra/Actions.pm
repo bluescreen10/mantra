@@ -17,13 +17,6 @@ method TOP($/) {
 
    $past.push($<class_definition>.ast);
 
-
-    # Startup Code
-    my $pir := " %r = new \"Startup\" \n"
-             ~ " %r.\"main\"()";
-
-    $past.push(PAST::Op.new(:inline($pir)));
-
     make $past;
 }
 
@@ -174,6 +167,7 @@ method expression($/) {
 method message($/) {
     my $past;
 
+    # Unary message
     if $<unary_first> {
         for $<unary_first> {
             my $message := PAST::Val.new( :returns<String>,
@@ -207,38 +201,120 @@ method message($/) {
             $past := $next;
         }
 
-    } elsif $<binary_first> {
-        $past := PAST::Op.new( :name('!call_method'),
-                               :pasttype('call'),
-                               :node($/) );
-        $past.push($<primary>.ast);
-        $past.push(PAST::Val.new( :returns<String>,
-                                  :value($<binary_first><method_name>) ) );
-        $past.push($<binary_first><primary>.ast);
-    } elsif $<keyword_first> {
-        $past := PAST::Op.new( :name('!call_method'),
-                               :pasttype('call'),
-                               :node($/) );
-        $past.push($<primary>.ast);
-        $past.push(PAST::Val.new( :returns<String>,
-                                  :value(pir::join(':',$<keyword_first><method_name>)~':') ) );
-        for $<keyword_first><primary> {
-            $past.push( $_.ast );
+        if $<keyword_third> {
+            my $next := $<keyword_third>[0].ast;
+            $next.unshift($past);
+            $past := $next;
         }
+
+
+    # Binary message
+    } elsif $<binary_first> {
+        $past := $<binary_first>.ast;
+        $past.unshift($<primary>.ast);
+    } elsif $<keyword_first> {
+        $past := $<keyword_first>.ast;
+        $past.unshift($<primary>.ast);
     }
     make $past;
 }
 
-method primary($/) {
-    my $past;
+method binary_message($/) {
+    my $argument;
 
-    if $<variable> {
-        $past := $<variable>.ast;
-    } elsif $<literal> {
-        $past := $<literal>.ast;
+    for $<unary_method> {
+        my $message := PAST::Val.new( :returns<String>,
+                                      :value($_) );
+        if $argument {
+            my $next := PAST::Op.new( :name('!call_method'),
+                                      :pasttype('call'),
+                                      :node($/) );
+            $next.push($argument);
+            $next.push($message);
+            $argument := $next;
+        } else {
+            $argument := PAST::Op.new( :name('!call_method'),
+                                       :pasttype('call'),
+                                       :node($/) );
+            $argument.push($<primary>.ast);
+            $argument.push($message);
+        }
     }
 
+    unless $argument {
+        $argument := $<primary>.ast;
+    }
+
+    my $past := PAST::Op.new( :name('!call_method'),
+                              :pasttype('call'),
+                              :node($/) );
+    $past.push(PAST::Val.new( :returns<String>,
+                              :value($<method_name>) ) );
+    $past.push($argument);
     make $past;
+
+}
+
+method keyword_message($/) {
+    my $past := PAST::Op.new( :name('!call_method'),
+                              :pasttype('call'),
+                              :node($/) );
+    $past.push(PAST::Val.new( :returns<String>,
+                              :value(pir::join(':',$<method_name>)~':') ) );
+    for $<keyword_argument> {
+        $past.push( $_.ast );
+    }
+    make $past;
+}
+
+method keyword_argument($/) {
+    my $primary;
+    for $<unary_method> {
+        my $message := PAST::Val.new( :returns<String>,
+                                      :value($_) );
+        if $primary {
+            my $next := PAST::Op.new( :name('!call_method'),
+                                      :pasttype('call'),
+                                      :node($/) );
+            $next.push($primary);
+            $next.push($message);
+            $primary := $next;
+        } else {
+            $primary := PAST::Op.new( :name('!call_method'),
+                                      :pasttype('call'),
+                                      :node($/) );
+            $primary.push($<primary>.ast);
+            $primary.push($message);
+        }
+    }
+
+    unless $primary {
+        $primary := $<primary>.ast;
+    }
+
+    my $past;
+
+    for $<binary_message> {
+        $past := $_.ast;
+        $past.unshift($primary);
+        $primary := $past;
+    }
+
+        if $past {
+            make $past;
+        } else {
+            make $primary
+        }
+}
+
+method primary($/) {
+    if $<variable> {
+        make $<variable>.ast;
+    } elsif $<literal> {
+        make $<literal>.ast;
+    } elsif $<basic_expression> {
+        make $<basic_expression>.ast
+    }
 }
 
 method variable($/) {
