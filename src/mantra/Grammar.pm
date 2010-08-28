@@ -8,7 +8,7 @@ grammar mantra::Grammar is HLL::Grammar;
 
 token TOP {
     <.compiler_init>
-    <class_definition>
+    <main>
     [ $ || <.panic: 'Syntax error'> ]
 }
 
@@ -16,15 +16,26 @@ token compiler_init {
     <?>
 }
 
+rule main {
+   <statement_or_class>*
+}
+
+rule statement_or_class {
+   | <class_definition>
+}
+
 ## Class grammar definitions
 
 rule class_definition {
-    [ 'class' || <.panic: 'Syntax Error'> ]
+#TODO Error handling:    [ 'class' || <.panic: 'Syntax Error'> ]
+    'class'
     <.begin_class>
 
     <class_name=class_identifier>
 
-    [ '<' <superclass=class_identifier> ** ',' '>' ]?
+    [ 'is'
+      [ <superclass=class_identifier> \s* ] ** ','
+    ]?
 
     '{' ~ '}' <method_definition>*
 }

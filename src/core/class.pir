@@ -19,7 +19,8 @@ class.pir -- class related functions
       iter_loop:
         unless it goto iter_end
         $P1 = shift it
-        addparent $P0, $P1
+        $P2 = get_class $P1
+        addparent $P0, $P2
         goto iter_loop
       iter_end:
 
@@ -27,6 +28,22 @@ class.pir -- class related functions
 .end
 
 .sub '!call_method'
+     .param pmc reciever
+     .param string method_name
+     .param pmc arguments :slurpy :optional
+#     "say"("reciever:")
+#     "say"(reciever)
+#     "say"("method name:")
+#     "say"(method_name)
+#     "say"("arguments:")
+#     "say"(arguments)
+ 
+     $P3 = find_method reciever, method_name
+     .tailcall reciever.$P3(arguments :flat)
+
+.end
+
+.sub 'call_method'
      .param pmc reciever
      .param string method_name
      .param pmc arguments :slurpy :optional

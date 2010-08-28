@@ -25,7 +25,6 @@ to the mantra compiler.
     load_language 'mantra'
 
     $P0 = compreg 'mantra'
-    $P0.'evalfiles'('examples/Object.ma')
     $P1 = $P0.'command_line'(args)
 
     # Startup Code

@@ -4,8 +4,10 @@ method compiler_init($/) {
     our $?BLOCK;
     our @?BLOCK;
 
+
     $?BLOCK := PAST::Block.new(:hll<mantra>, :blocktype<declaration>);
     @?BLOCK.unshift($?BLOCK);
+
 }
 
 method TOP($/) {
@@ -14,10 +16,20 @@ method TOP($/) {
 
     # Get the parent block
     my $past := @?BLOCK.shift();
-
-   $past.push($<class_definition>.ast);
-
+    $past.push($<main>.ast);
     make $past;
+}
+
+method main($/) {
+    my $past := PAST::Stmts.new( :node($/) );
+    for $<statement_or_class> {
+        $past.push($_.ast);
+    }
+    make $past;
+}
+
+method statement_or_class($/) {
+    make $<class_definition>.ast;
 }
 
 method begin_class($/) {
@@ -37,18 +49,7 @@ method class_definition($/) {
     #my $past := PAST::Block.new(:blocktype<declaration>,:node($/));
 
     # Create the class defintion
-    # Primitive
-    my $create_class := PAST::Op.new(:name('!create_class'), :node($/));
-    @?BLOCK[-1].push($create_class);
-    #$past.push($create_class);
-
-    # # Class name
-    $create_class.push($<class_name>.ast);
-
-    # Super classes
-    #for $<superclass> {
-    #    $create_class.push($($_));
-    #}
+    mantra::Metaclass.create_class(~$<class_name>,$<superclass>);
 
     # Methods
     for $<method_definition> {
@@ -428,4 +429,21 @@ method string_constant($/) {
 
 method quote:sym<'>($/) { make $<quote_EXPR>.ast; }
 method quote:sym<">($/) { make $<quote_EXPR>.ast; }
+
+# method need($module_name) {
+#     our @?BLOCK;
+#     our %LOADED;
+
+#     unless %LOADED{$module_name} {
+#      %LOADED{$module_name} :=1;
+#         my $pm_file := "src/lib/"~$module_name~".ma";
+#         my $fh     := pir::open__PSS($pm_file, 'r');
+#         $fh.encoding('utf8');
+#         my $source := $fh.readall();
+#         $fh.close();
+#         my $eval := mantra::Compiler.compile($source);
+#         #say($eval);
+#         $eval();
+#    }
+# }
 

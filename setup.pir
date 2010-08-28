@@ -63,6 +63,8 @@ No Configure step, no Makefile generated.
     $P4['src/gen_compiler.pir'] = 'src/mantra/Compiler.pm'
     $P4['src/gen_grammar.pir'] = 'src/mantra/Grammar.pm'
     $P4['src/gen_runtime.pir'] = 'src/mantra/Runtime.pm'
+    $P4['src/gen_loader.pir'] = 'src/mantra/Loader.pm'
+    $P4['src/gen_metaclass.pir'] = 'src/mantra/Metaclass.pm'
     $P0['pir_nqp-rx'] = $P4
 
     $P5 = new 'Hash'
