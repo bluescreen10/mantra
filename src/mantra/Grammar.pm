@@ -8,7 +8,7 @@ grammar mantra::Grammar is HLL::Grammar;
 
 token TOP {
     <.compiler_init>
-    <main>
+    <statement>*
     [ $ || <.panic: 'Syntax error'> ]
 }
 
@@ -16,32 +16,8 @@ token compiler_init {
     <?>
 }
 
-rule main {
-   <statement_or_class>*
-}
-
-rule statement_or_class {
-   | <class_definition>
-}
-
-## Class grammar definitions
-
-rule class_definition {
-#TODO Error handling:    [ 'class' || <.panic: 'Syntax Error'> ]
-    'class'
-    <.begin_class>
-
-    <class_name=class_identifier>
-
-    [ 'is'
-      [ <superclass=class_identifier> \s* ] ** ','
-    ]?
-
-    '{' ~ '}' <method_definition>*
-}
-
-token begin_class {
-    <?>
+token class_name {
+   <class_identifier>
 }
 
 ## Indentifiers
@@ -167,12 +143,16 @@ rule primary {
 
 token variable {
     | <pseudo_variable_self>
+    | <writable_variable>
+}
+
+token writable_variable {
+    | <instance_variable>
     | <local_variable>
 }
 
-
 token assignment {
-     <name=ident> ':' \h* <basic_expression>
+     <writable_variable> ':' \h* <basic_expression>
 }
 
 # rule assignment_target {
@@ -185,13 +165,12 @@ token pseudo_variable_self {
     'self'
 }
 
-# token instance_variable_identifier {
-#     '@' <indentifier>
-#     {*}
-# }
+token instance_variable {
+     '@' <ident>
+}
 
 # token class_variable_identifier {
-#     '@@' <identifier>
+#     '@@' <ident>
 #     {*}
 # }
 
@@ -208,7 +187,7 @@ token local_variable {
 
 token binary_method_name {
      [ '!' | '%' | '+' | '-' | '/' | '<' | '=' | '>'
-     | '?' | '@' | '\\' | '~' | '|' | '*' ]+
+     | '?' | '$' | '\\' | '~' | '|' | '*' ]+
 }
 
 # token keyword_method_name {

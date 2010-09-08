@@ -4,7 +4,6 @@ method compiler_init($/) {
     our $?BLOCK;
     our @?BLOCK;
 
-
     $?BLOCK := PAST::Block.new(:hll<mantra>, :blocktype<declaration>);
     @?BLOCK.unshift($?BLOCK);
 
@@ -35,22 +34,33 @@ method statement_or_class($/) {
 method begin_class($/) {
     our $?BLOCK;
     our @?BLOCK;
+    our %ATTRIBUTES;
 
     #my $past := $?BLOCK;
     $?BLOCK := PAST::Block.new(:blocktype<declaration>,:node($/));
     @?BLOCK.unshift($?BLOCK);
+    %ATTRIBUTES := {};
+}
+
+method class_name($/) {
+    our $?CLASS;
+    $?CLASS := ~$<class_identifier>;
 }
 
 method class_definition($/) {
     our $?BLOCK;
     our @?BLOCK;
+    our $?CLASS;
+    our %ATTRIBUTES;
 
     my $past := $?BLOCK;
     #my $past := PAST::Block.new(:blocktype<declaration>,:node($/));
 
     # Create the class defintion
-    mantra::Metaclass.create_class(~$<class_name>,$<superclass>);
+    #$?CLASS := ~$<class_name>;
+    mantra::Metaclass.create_class($?CLASS, $<superclass>, %ATTRIBUTES);# ,$<superclass>, keys %?ATTRIBUTES);
 
+    
     # Methods
     for $<method_definition> {
          my $method := $_.ast;
@@ -321,9 +331,24 @@ method primary($/) {
 method variable($/) {
     if $<pseudo_variable_self> {
         make $<pseudo_variable_self>.ast;
+    } elsif $<writable_variable> {
+        make $<writable_variable>.ast;
+    }
+}
+
+method writable_variable($/) {
+    if $<instance_variable> {
+        make $<instance_variable>.ast;
     } elsif $<local_variable> {
         make $<local_variable>.ast;
     }
+}
+
+method instance_variable ($/) {
+    our %ATTRIBUTES;
+    %ATTRIBUTES{~$<ident>} := 1;
+    my $past := PAST::Var.new( :name(~$<ident>), :scope<attribute>, :node($/) );
+    make $past;
 }
 
 method pseudo_variable_self($/) {
@@ -351,44 +376,56 @@ method primitive($/) {
 method assignment($/) {
     our @?BLOCK;
     our $?BLOCK;
+    our $?CLASS;
 
-    my $name := $<name>;
-
-    my $variable := PAST::Var.new(:name($name),
-                                  :scope<lexical>,
-                                  :viviself<Undef>,
-                                  :node($/) );
-
-    $variable.isdecl(1);
-    my $count := 0;
-    for @?BLOCK {
-        $count++;
-        if $_.symbol( $name) {
-            $variable.isdecl(0);
-        }
-    }
-
-    if $variable.isdecl {
-       $?BLOCK.symbol( $name, :scope<lexical>);
-    }
-
-    $variable.lvalue(1);
-
-    my $value := $<basic_expression>.ast;
     #TODO: Rethink this ---------------
 
     my $past := PAST::Stmts.new();
 
-    $past.push( PAST::Op.new( $variable,
-                              PAST::Val.new(:returns<Integer>, :value(0)),
-                              :pasttype<bind>,
-                              :node($/) ) );
 
-    $variable := PAST::Var.new(:name($name),
-                                  :scope<lexical>,
-                                  :viviself<Undef>,
-                                  :node($/) );
     #------8<--------------------------
+
+
+
+    # my $variable := PAST::Var.new(:name($name),
+    #                               :scope<lexical>,
+    #                               :viviself<Undef>,
+    #                               :node($/) );
+
+    my $variable := $<writable_variable>.ast;
+    my $variable_scope := $variable.scope();
+    my $variable_name := $variable.name();
+
+    if $variable_scope eq 'lexical' {
+        $variable.isdecl(1);
+        for @?BLOCK {
+            if $_.symbol( $variable_name) {
+                $variable.isdecl(0);
+            }
+        }
+
+        if $variable.isdecl {
+            $?BLOCK.symbol( $variable_name, :scope<lexical>);
+#            $past.push( PAST::Op.new( :inline(".lex \"$variable_name\", ")));
+#            $variable.isdecl(0);
+            my $variable2 := PAST::Var.new(:name($variable_name),
+                                    :scope<lexical>,
+                                    :viviself<Undef>,
+                                    :node($/) );
+            $past.push( PAST::Op.new( $variable2,
+                                   PAST::Val.new(:returns<Integer>, :value(0)),
+                                   :pasttype<bind>,
+                                   :node($/) ) );
+            $variable2.isdecl(1);
+            $variable.isdecl(0);
+        }
+
+    }
+
+
+
+    $variable.lvalue(1);
+    my $value := $<basic_expression>.ast;
 
     $past.push( PAST::Op.new( $variable,
                               $value,
@@ -410,14 +447,14 @@ method local_variable($/) {
         }
     }
 
-    if $defined {
+#    if $defined {
         make PAST::Var.new( :name($name),
                             :scope<lexical>,
                             :viviself<Undef>,
                             :node($/) );
-    } else {
+#    } else {
 #        $/.CURSOR.panic("Error: local variable " ~$name~ " was not defined yet");
-    }
+#    }
 
 }
 

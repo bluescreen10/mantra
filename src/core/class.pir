@@ -58,3 +58,12 @@ class.pir -- class related functions
      .tailcall reciever.$P3(arguments :flat)
 
 .end
+
+.sub 'basic_new'
+     .param pmc class
+     say class
+     $P0 = typeof class
+     say $P1
+     $P1 = new $P0
+     .return($P1)
+.end
