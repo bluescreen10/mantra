@@ -1,11 +1,12 @@
 class mantra::Actions is HLL::Actions;
 
-method compiler_init($/) {
+# Called at the beginning of the parsing usefull to wrap up everything
+method begin($/) {
     our $?BLOCK;
     our @?BLOCK;
 
     $?BLOCK := PAST::Block.new(:hll<mantra>, :blocktype<declaration>);
-    @?BLOCK.unshift($?BLOCK);
+    @?BLOCK.push($?BLOCK);
 
 }
 
@@ -14,117 +15,12 @@ method TOP($/) {
     our @?BLOCK;
 
     # Get the parent block
-    my $past := @?BLOCK.shift();
-    $past.push($<main>.ast);
-    make $past;
-}
-
-method main($/) {
-    my $past := PAST::Stmts.new( :node($/) );
-    for $<statement_or_class> {
-        $past.push($_.ast);
-    }
-    make $past;
-}
-
-method statement_or_class($/) {
-    make $<class_definition>.ast;
-}
-
-method begin_class($/) {
-    our $?BLOCK;
-    our @?BLOCK;
-    our %ATTRIBUTES;
-
-    #my $past := $?BLOCK;
-    $?BLOCK := PAST::Block.new(:blocktype<declaration>,:node($/));
-    @?BLOCK.unshift($?BLOCK);
-    %ATTRIBUTES := {};
-}
-
-method class_name($/) {
-    our $?CLASS;
-    $?CLASS := ~$<class_identifier>;
-}
-
-method class_definition($/) {
-    our $?BLOCK;
-    our @?BLOCK;
-    our $?CLASS;
-    our %ATTRIBUTES;
-
-    my $past := $?BLOCK;
-    #my $past := PAST::Block.new(:blocktype<declaration>,:node($/));
-
-    # Create the class defintion
-    #$?CLASS := ~$<class_name>;
-    mantra::Metaclass.create_class($?CLASS, $<superclass>, %ATTRIBUTES);# ,$<superclass>, keys %?ATTRIBUTES);
-
-    
-    # Methods
-    for $<method_definition> {
-         my $method := $_.ast;
-         $method.namespace( $<class_name> );
-         $past.push($method);
-    }
-
-    #$?BLOCK.push($past);
-    @?BLOCK.shift();
-    $?BLOCK := @?BLOCK[0];
-    make $past;
-    #make $create_class;
-}
-
-
-method class_identifier($/) {
-    make PAST::Val.new( :returns<String>, :value($/), :node($/));
-}
-
-method begin_method_definition($/) {
-    our $?BLOCK;
-    our @?BLOCK;
-
-    $?BLOCK := PAST::Block.new(:blocktype<method>,:node($/));
-
-    # Binary method
-    if $<binary_method> {
-        $?BLOCK.name($<binary_method><method_name>);
-        $?BLOCK.push( PAST::Var.new( :scope<parameter>, :name($<binary_method><param>) ));
-        $?BLOCK.symbol($<binary_method><param>, :scope<lexical>);
-    }
-
-    # Keyword method
-    elsif $<keyword_method> {
-        $?BLOCK.name(pir::join(':',$<keyword_method><method_name>)~':');
-        for $<keyword_method><param> {
-            $?BLOCK.push( PAST::Var.new( :scope<parameter>, :name($_) ));
-            $?BLOCK.symbol($_, :scope<lexical>);
-        }
-    }
-
-    # Unary
-    elsif $<unary_method> {
-        $?BLOCK.name($<unary_method>);
-    }
-
-
-    @?BLOCK.unshift($?BLOCK);
-}
-
-method method_definition($/) {
-    our $?BLOCK;
-    our @?BLOCK;
-
-    my $past := $?BLOCK;
-
-    # Add statements
+    my $past := @?BLOCK.pop();
     $past.push($<statement_list>.ast);
-
-    @?BLOCK.shift();
-    $?BLOCK := @?BLOCK[0];
     make $past;
 }
 
+# Statements
 method statement_list($/) {
     my $past := PAST::Stmts.new();
 
@@ -133,20 +29,17 @@ method statement_list($/) {
     }
 
     # by default return self
-    my $return_statement := PAST::Op.new( :pasttype<pirop>, :pirop<return> );
-    $return_statement.push(PAST::Var.new( :name<self>, :scope<register> ) );
-    $past.push($return_statement);
+    #my $return_statement := PAST::Op.new( :pasttype<pirop>, :pirop<return> );
+    #$return_statement.push(PAST::Var.new( :name<self>, :scope<register> ) );
+    #$past.push($return_statement);
 
     make $past;
 }
 
 method statement($/) {
-    my $past;
     if $<expression> {
-        $past := $<expression>.ast;
+        make $<expression>.ast;
     }
-
-    make $past;
 }
 
 method return_statement($/) {
@@ -321,26 +214,30 @@ method keyword_argument($/) {
 method primary($/) {
     if $<variable> {
         make $<variable>.ast;
-    } elsif $<literal> {
+    }
+    elsif $<literal> {
         make $<literal>.ast;
-    } elsif $<basic_expression> {
+    }
+    elsif $<basic_expression> {
         make $<basic_expression>.ast
+    }
+    elsif $<block> {
+        make $<block>.ast;
     }
 }
 
 method variable($/) {
     if $<pseudo_variable_self> {
         make $<pseudo_variable_self>.ast;
-    } elsif $<writable_variable> {
-        make $<writable_variable>.ast;
     }
-}
-
-method writable_variable($/) {
-    if $<instance_variable> {
+    elsif $<pseudo_variable_object> {
+        make $<pseudo_variable_object>.ast;
+    }
+    elsif $<instance_variable> {
         make $<instance_variable>.ast;
-    } elsif $<local_variable> {
-        make $<local_variable>.ast;
+    }
+    elsif $<lexical_variable> {
+        make $<lexical_variable>.ast;
     }
 }
 
@@ -355,6 +252,11 @@ method pseudo_variable_self($/) {
     make PAST::Var.new( :name<self>, :scope<register> );
 }
 
+method pseudo_variable_object($/) {
+    make PAST::Var.new( :name<Object>, :scope<package> );
+}
+
+
 method literal($/) {
     my $past;
 
@@ -366,6 +268,10 @@ method literal($/) {
 }
 
 method primitive($/) {
+    make $<primitive_contents>.ast;
+}
+
+method primitive_contents($/) {
     my $past := PAST::Op.new( :name($<identifier>));
     for $<primary> {
         $past.push($_.ast);
@@ -376,7 +282,6 @@ method primitive($/) {
 method assignment($/) {
     our @?BLOCK;
     our $?BLOCK;
-    our $?CLASS;
 
     #TODO: Rethink this ---------------
 
@@ -391,8 +296,7 @@ method assignment($/) {
     #                               :scope<lexical>,
     #                               :viviself<Undef>,
     #                               :node($/) );
-
-    my $variable := $<writable_variable>.ast;
+    my $variable := $<assignment_target>.ast;
     my $variable_scope := $variable.scope();
     my $variable_name := $variable.name();
 
@@ -434,7 +338,11 @@ method assignment($/) {
     make $past;
 }
 
-method local_variable($/) {
+method assignment_target($/) {
+    make $<variable>.ast;
+}
+
+method lexical_variable($/) {
     our @?BLOCK;
 
     my $name := $<name>;
@@ -458,6 +366,40 @@ method local_variable($/) {
 
 }
 
+
+# BLOCK
+method begin_block($/) {
+    our $?BLOCK;
+    our @?BLOCK;
+
+    $?BLOCK := PAST::Block.new(:blocktype<declaration>);
+    @?BLOCK.push($?BLOCK);
+
+}
+
+method block($/) {
+    our $?BLOCK;
+    our @?BLOCK;
+
+    @?BLOCK.pop();
+
+    $?BLOCK := @?BLOCK[-1];
+
+    make $<block_contents>.ast;
+}
+
+method block_contents($/) {
+    our $?BLOCK;
+    our @?BLOCK;
+
+    for $<ident> {
+        $?BLOCK.push( PAST::Var.new( :name($_), :scope<parameter> ) );
+    }
+
+    $?BLOCK.push($<statement_list>.ast);
+    make $?BLOCK;
+}
+
 method string_constant($/) {
     my $past := $<quote>.ast;
     $past.returns('String');
@@ -466,21 +408,3 @@ method string_constant($/) {
 
 method quote:sym<'>($/) { make $<quote_EXPR>.ast; }
 method quote:sym<">($/) { make $<quote_EXPR>.ast; }
-
-# method need($module_name) {
-#     our @?BLOCK;
-#     our %LOADED;
-
-#     unless %LOADED{$module_name} {
-#      %LOADED{$module_name} :=1;
-#         my $pm_file := "src/lib/"~$module_name~".ma";
-#         my $fh     := pir::open__PSS($pm_file, 'r');
-#         $fh.encoding('utf8');
-#         my $source := $fh.readall();
-#         $fh.close();
-#         my $eval := mantra::Compiler.compile($source);
-#         #say($eval);
-#         $eval();
-#    }
-# }
-

@@ -7,23 +7,13 @@ This is the grammar for mantra in Perl 6 rules.
 grammar mantra::Grammar is HLL::Grammar;
 
 token TOP {
-    <.compiler_init>
-    <statement>*
+    <.begin>
+    <statement_list>
     [ $ || <.panic: 'Syntax error'> ]
 }
 
-token compiler_init {
+token begin {
     <?>
-}
-
-token class_name {
-   <class_identifier>
-}
-
-## Indentifiers
-token class_identifier {
-    [ <namespace=identifier> '.' ]* <class_name=identifier>
-    || <.panic: 'Invalid namespace or class name'>
 }
 
 ## General grammars
@@ -33,11 +23,6 @@ token identifier {
 }
 
 ## Method defintion
-
-rule method_definition {
-    <begin_method_definition>
-    '{' ~ '}' <statement_list>
-}
 
 token begin_method_definition {
     | <keyword_method>
@@ -60,17 +45,18 @@ token unary_method {
 
 # Statement list
 rule statement_list {
-    [ <statement> ** '.' ]*
+    [ <statement> ** <dot> ]*
 }
 
 # Statement
 rule statement {
-    | <expression>
-    | '.'
+    <dot>*
+    <expression>
+    <dot>*
 }
 
-rule return_statement {
-     '^' <basic_expression>
+token dot {
+    '.'
 }
 
 rule expression {
@@ -79,11 +65,35 @@ rule expression {
     | <basic_expression>
 }
 
+
+rule return_statement {
+     '^' <basic_expression>
+}
+
+
 rule basic_expression {
     | <primitive>
     | <message>
     | <primary>
 }
+
+
+# Block
+
+rule block {
+    '{' ~ '}' <block_contents>
+}
+
+rule block_contents {
+    <.begin_block>
+    [ <ident>* '|' ]? <statement_list>
+}
+
+token begin_block {
+    <?>
+}
+
+# /Block
 
 rule message {
     <primary>
@@ -129,37 +139,34 @@ token keyword_argument {
         ]*
 }
 
-
-# token unary_selector {
-#    <identifier>
-#    {*}
-# }
-
 rule primary {
      | <variable>
      | <literal>
      | '(' ~ ')' <basic_expression>
+     | <block>
 }
 
 token variable {
     | <pseudo_variable_self>
-    | <writable_variable>
+    | <pseudo_variable_object>
+    | <instance_variable>
+    | <lexical_variable>
 }
 
 token writable_variable {
-    | <instance_variable>
-    | <local_variable>
 }
 
 token assignment {
-     <writable_variable> ':' \h* <basic_expression>
+     <assignment_target> ':' \h* <basic_expression>
 }
 
-# rule assignment_target {
-#     <!reserved_words><variable>
-#     {*}
-# }
+rule assignment_target {
+     <!reserved_words><variable>
+}
 
+token pseudo_variable_object {
+    'Object'
+}
 
 token pseudo_variable_self {
     'self'
@@ -169,21 +176,21 @@ token instance_variable {
      '@' <ident>
 }
 
-# token class_variable_identifier {
-#     '@@' <ident>
-#     {*}
-# }
-
-token local_variable {
+token lexical_variable {
      <name=ident>
 }
 
 
 # # Tokens
 
-# token reserved_words {
-#     [ 'true' | 'false' | 'null' | 'self' | 'class' ]
-# }
+token reserved_words {
+     | 'Object'  #Do we really want object here?
+     | 'true'
+     | 'false'
+     | 'null'
+     | 'self'
+     | 'class'
+}
 
 token binary_method_name {
      [ '!' | '%' | '+' | '-' | '/' | '<' | '=' | '>'
@@ -230,7 +237,11 @@ token string_literal {
 # }
 
 token primitive {
-    '<' <identifier=ident> '(' [ <primary> [ ',' <primary> ]*]?  ')'  '>'
+    '<' ~ '>'  <primitive_contents>
+}
+
+token primitive_contents {
+    <identifier=ident> '(' [ <primary> ** ',' ]? ')'
 }
 
 
@@ -240,18 +251,3 @@ token ws {
     <!ww>
     [ '#' \N* \n? | \s+ | \n+ ]*
 }
-
-## Operators
-
-# INIT {
-#     mantra::Grammar.O(':prec<u>, :assoc<left>',  '%multiplicative');
-#     mantra::Grammar.O(':prec<t>, :assoc<left>',  '%additive');
-# }
-
-# #token circumfix:sym<( )> { '(' <.ws> <EXPR> ')' }
-
-# #token infix:sym<*>  { <sym> <O('%multiplicative, :pirop<mul>')> }
-# #token infix:sym</>  { <sym> <O('%multiplicative, :pirop<div>')> }
-
-# #token infix:sym<+>  { <sym> <O('%additive, :pirop<add>')> }
-# #token infix:sym<->  { <sym> <O('%additive, :pirop<sub>')> }

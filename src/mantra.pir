@@ -41,10 +41,10 @@ object.
 .include 'src/gen_grammar.pir'
 .include 'src/gen_actions.pir'
 .include 'src/gen_compiler.pir'
-.include 'src/gen_loader.pir'
-.include 'src/gen_metaclass.pir'
 .include 'src/gen_runtime.pir'
 .include 'src/core/class.pir'
+.include 'src/core/object.pir'
+
 
 =back
 

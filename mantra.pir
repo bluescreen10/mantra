@@ -26,11 +26,6 @@ to the mantra compiler.
 
     $P0 = compreg 'mantra'
     $P1 = $P0.'command_line'(args)
-
-    # Startup Code
-    $P2 = new "Startup"
-    $P2."main"()
-
 .end
 
 =back
