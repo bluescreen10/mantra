@@ -10,7 +10,7 @@ class.pir -- class related functions
      .param pmc reciever
      .param string method_name
      .param pmc arguments :slurpy :optional
-     $P1 = find_method reciever, method_name
-     .tailcall reciever.$P1(arguments :flat)
+     $P1 = find_method reciever, 'withArgs:execute:'
+     .tailcall reciever.$P1(arguments, method_name)
 
 .end

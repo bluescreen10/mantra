@@ -51,10 +51,17 @@ method return_statement($/) {
 method basic_expression($/) {
     if $<primitive> {
         make $<primitive>.ast;
-    } elsif $<message> {
-        make $<message>.ast;
     } elsif $<primary> {
-        make $<primary>.ast;
+        if $<message> {
+            my $past := PAST::Stmts.new();
+            for $<message> {
+                $past.push($_.ast);
+                $_.ast.unshift($<primary>.ast);
+            }
+            make $past;
+        } else {
+            make $<primary>.ast;
+        }
     }
 }
 
@@ -77,17 +84,19 @@ method message($/) {
             my $message := PAST::Val.new( :returns<String>,
                                           :value($_) );
             if $past {
-                my $next := PAST::Op.new( :name('!call_method'),
-                                        :pasttype('call'),
+#                my $next := PAST::Op.new( :name('!call_method'),
+                my $next := PAST::Op.new( :name('execute:withArgs:'),
+                                        :pasttype('callmethod'),
                                         :node($/) );
                 $next.push($past);
                 $next.push($message);
                 $past := $next;
             } else {
-                $past := PAST::Op.new( :name('!call_method'),
-                                        :pasttype('call'),
+#                $past := PAST::Op.new( :name('!call_method'),
+                $past := PAST::Op.new( :name('execute:withArgs:'),
+                                        :pasttype('callmethod'),
                                         :node($/) );
-                $past.push($<primary>.ast);
+#               $past.push($<primary>.ast);
                 $past.push($message);
             }
         }
@@ -96,8 +105,9 @@ method message($/) {
             my $message := PAST::Val.new( :returns<String>,
                                           :value($_<method_name>) );
 
-            my $next := PAST::Op.new( :name('!call_method'),
-                                      :pasttype('call'),
+#            my $next := PAST::Op.new( :name('!call_method'),
+            my $next := PAST::Op.new( :name('execute:withArgs:'),
+                                      :pasttype('callmethod'),
                                       :node($/) );
             $next.push($past);
             $next.push($message);
@@ -115,10 +125,10 @@ method message($/) {
     # Binary message
     } elsif $<binary_first> {
         $past := $<binary_first>.ast;
-        $past.unshift($<primary>.ast);
+#        $past.unshift($<primary>.ast);
     } elsif $<keyword_first> {
         $past := $<keyword_first>.ast;
-        $past.unshift($<primary>.ast);
+#        $past.unshift($<primary>.ast);
     }
     make $past;
 }
@@ -130,15 +140,17 @@ method binary_message($/) {
         my $message := PAST::Val.new( :returns<String>,
                                       :value($_) );
         if $argument {
-            my $next := PAST::Op.new( :name('!call_method'),
-                                      :pasttype('call'),
+#            my $next := PAST::Op.new( :name('!call_method'),
+            my $next := PAST::Op.new( :name('execute:withArgs:'),
+                                      :pasttype('callmethod'),
                                       :node($/) );
             $next.push($argument);
             $next.push($message);
             $argument := $next;
         } else {
-            $argument := PAST::Op.new( :name('!call_method'),
-                                       :pasttype('call'),
+#            $argument := PAST::Op.new( :name('!call_method'),
+            $argument := PAST::Op.new( :name('execute:withArgs:'),
+                                       :pasttype('callmethod'),
                                        :node($/) );
             $argument.push($<primary>.ast);
             $argument.push($message);
@@ -149,8 +161,9 @@ method binary_message($/) {
         $argument := $<primary>.ast;
     }
 
-    my $past := PAST::Op.new( :name('!call_method'),
-                              :pasttype('call'),
+#    my $past := PAST::Op.new( :name('!call_method'),
+    my $past := PAST::Op.new( :name('execute:withArgs:'),
+                              :pasttype('callmethod'),
                               :node($/) );
     $past.push(PAST::Val.new( :returns<String>,
                               :value($<method_name>) ) );
@@ -160,8 +173,9 @@ method binary_message($/) {
 }
 
 method keyword_message($/) {
-    my $past := PAST::Op.new( :name('!call_method'),
-                              :pasttype('call'),
+#    my $past := PAST::Op.new( :name('!call_method'),
+    my $past := PAST::Op.new( :name('execute:withArgs:'),
+                              :pasttype('callmethod'),
                               :node($/) );
     $past.push(PAST::Val.new( :returns<String>,
                               :value(pir::join(':',$<method_name>)~':') ) );
@@ -177,15 +191,17 @@ method keyword_argument($/) {
         my $message := PAST::Val.new( :returns<String>,
                                       :value($_) );
         if $primary {
-            my $next := PAST::Op.new( :name('!call_method'),
-                                      :pasttype('call'),
+#            my $next := PAST::Op.new( :name('!call_method'),
+            my $next := PAST::Op.new( :name('execute:withArgs:'),
+                                      :pasttype('callmethod'),
                                       :node($/) );
             $next.push($primary);
             $next.push($message);
             $primary := $next;
         } else {
-            $primary := PAST::Op.new( :name('!call_method'),
-                                      :pasttype('call'),
+#            $primary := PAST::Op.new( :name('!call_method'),
+            $primary := PAST::Op.new( :name('execute:withArgs:'),
+                                      :pasttype('callmethod'),
                                       :node($/) );
             $primary.push($<primary>.ast);
             $primary.push($message);
@@ -249,7 +265,7 @@ method instance_variable ($/) {
 }
 
 method pseudo_variable_self($/) {
-    make PAST::Var.new( :name<self>, :scope<register> );
+    make PAST::Var.new( :name<self>, :scope<lexical> );
 }
 
 method pseudo_variable_object($/) {
@@ -307,24 +323,25 @@ method assignment($/) {
                 $variable.isdecl(0);
             }
         }
-
-        if $variable.isdecl {
-            $?BLOCK.symbol( $variable_name, :scope<lexical>);
-#            $past.push( PAST::Op.new( :inline(".lex \"$variable_name\", ")));
-#            $variable.isdecl(0);
-            my $variable2 := PAST::Var.new(:name($variable_name),
-                                    :scope<lexical>,
-                                    :viviself<Undef>,
-                                    :node($/) );
-            $past.push( PAST::Op.new( $variable2,
-                                   PAST::Val.new(:returns<Integer>, :value(0)),
-                                   :pasttype<bind>,
-                                   :node($/) ) );
-            $variable2.isdecl(1);
-            $variable.isdecl(0);
-        }
-
     }
+
+#         if $variable.isdecl {
+#             $?BLOCK.symbol( $variable_name, :scope<lexical>);
+# #            $past.push( PAST::Op.new( :inline(".lex \"$variable_name\", ")));
+# #            $variable.isdecl(0);
+#             my $variable2 := PAST::Var.new(:name($variable_name),
+#                                     :scope<lexical>,
+#                                     :viviself<Undef>,
+#                                     :node($/) );
+#             $past.push( PAST::Op.new( $variable2,
+#                                    PAST::Val.new(:returns<Integer>, :value(0)),
+#                                    :pasttype<bind>,
+#                                    :node($/) ) );
+#             $variable2.isdecl(1);
+#             $variable.isdecl(0);
+#         }
+
+#     }
 
 
 
@@ -373,6 +390,7 @@ method begin_block($/) {
     our @?BLOCK;
 
     $?BLOCK := PAST::Block.new(:blocktype<declaration>);
+    $?BLOCK.closure(1);
     @?BLOCK.push($?BLOCK);
 
 }
@@ -385,13 +403,22 @@ method block($/) {
 
     $?BLOCK := @?BLOCK[-1];
 
-    make $<block_contents>.ast;
+#    my $past := PAST::Op.new( :name('!call_method'),
+    my $past := PAST::Op.new( :name('execute:withArgs:'),
+                              :pasttype('callmethod'),
+                              :node($/) );
+
+    $past.push(PAST::Var.new( :name<Block>, :scope<package> ));
+    $past.push(PAST::Val.new( :returns<String>,:value('content:')));
+    $past.push($<block_contents>.ast);
+    make $past;
 }
 
 method block_contents($/) {
     our $?BLOCK;
     our @?BLOCK;
 
+#    $?BLOCK.push( PAST::Var.new( :name<self>, :scope<parameter> ), :viviself<Undef> );
     for $<ident> {
         $?BLOCK.push( PAST::Var.new( :name($_), :scope<parameter> ) );
     }

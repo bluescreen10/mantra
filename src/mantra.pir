@@ -44,7 +44,7 @@ object.
 .include 'src/gen_runtime.pir'
 .include 'src/core/class.pir'
 .include 'src/core/object.pir'
-
+.include 'src/core/block.pir'
 
 =back
 

@@ -73,8 +73,7 @@ rule return_statement {
 
 rule basic_expression {
     | <primitive>
-    | <message>
-    | <primary>
+    | <primary> [ <message> ** ';' ]?
 }
 
 
@@ -96,13 +95,12 @@ token begin_block {
 # /Block
 
 rule message {
-    <primary>
-    [
     | <keyword_first=keyword_message>
     | <binary_first=binary_message>
     | <unary_first=unary_method>+ <binary_second=binary_message>* <keyword_third=keyword_message>?
-    ]
 }
+
+
 
 token binary_message {
     <method_name=binary_method_name> <ws>

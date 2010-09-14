@@ -1,14 +1,9 @@
-Startup: Object new1.
+Startup: Object new.
 
-Startup addMethod: 'void' as: { 'asdas' }.
+Startup 
+    addMethod: 'void' as: { 'asdas' };
+    addMethod: 'plan' as: { <say('1..1')> };
+    addMethod: 'results' as: { <say('ok 1 Basic test')> };
+    plan;
+    results.
 
-Startup addMethod: 'plan' as: { 
-        <say('1..1')> 
-}.
-
-Startup addMethod: 'results' as: {
-        <say('ok 1 Basic test')>
-}.
-
-Startup plan.
-Startup results.
