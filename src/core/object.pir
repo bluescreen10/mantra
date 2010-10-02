@@ -14,17 +14,11 @@ object.pir -- Mantra object
 .sub '' :anon :load
      $P1 = newclass 'ProtoObject'
      $P2 = new 'ProtoObject'
-     set_global "Object", $P2
+     set_hll_global "Object", $P2
 .end
 
 .namespace ['ProtoObject']
 
-.sub 'new' :method
-     $P0 = typeof self
-     $P1 = clone $P0
-     $P2 = new $P1
-     .return($P2)
-.end
 
 .sub 'addMethod:as:' :method
      .param string method_name
@@ -39,14 +33,26 @@ object.pir -- Mantra object
 .sub 'execute:withArgs:' :method
      .param string method_name
      .param pmc arguments :slurpy :optional
+
+     $P0 = new 'Continuation'
+     set_addr $P0, retr_point
+
+     .lex '!retr', $P0
      .lex 'self', self
-     $P0 = find_method self, method_name
-     if method_name == "new" goto method_call
+
+     $P99 = new 'Integer'
+     .lex '!retr_value', $P99
+     store_lex '!retr_value', self
+
+     $P2 = find_method self, method_name
      if method_name == "addMethod:as:" goto method_call
      if method_name == "execute:withArgs:" goto method_call
-     capture_lex $P0
-     .tailcall $P0(arguments :flat)
-     .return()
+     capture_lex $P2
+     $P2(arguments :flat)
+     goto retr_point
 method_call:
-     .tailcall self.$P0(arguments :flat)
+     self.$P2(arguments :flat)
+retr_point:
+     $P1 = find_lex '!retr_value'
+     .return($P1)
 .end

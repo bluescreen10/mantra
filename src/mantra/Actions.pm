@@ -43,9 +43,13 @@ method statement($/) {
 }
 
 method return_statement($/) {
-    my $past := PAST::Op.new( :pasttype<pirop>, :pirop<return> );
-    $past.push($<basic_expression>.ast);
-    make $past;
+    make PAST::Op.new( :inline(
+            'store_lex "!retr_value", %0',
+            '$P0 = find_lex "!retr"',
+            '.tailcall $P0()'
+        ),
+        $<basic_expression>.ast
+    );
 }
 
 method basic_expression($/) {
