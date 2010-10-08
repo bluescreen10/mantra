@@ -1,11 +1,14 @@
-class Object {
+Object 
+  addMethod: 'printMemoryAddress' as: {
+    address: <getaddress(self)>.
+    System out: address
+  };
 
-      new {
-          ^ <basic_new(self)>
-      }     
+  addMethod: '==' as: { anObject | 
+      ^ <sameobject(self,anObject)>
+  }; 
 
-      call: aMethodName with: firstArgument {
-          <call_method(self,aMethodName,firstArgument)>                  
-      }
+  addMethod: '=' as: { anObject |
+      ^ self == anObject
+  }.
 
-}

@@ -42,9 +42,9 @@ object.
 .include 'src/gen_actions.pir'
 .include 'src/gen_compiler.pir'
 .include 'src/gen_runtime.pir'
-.include 'src/core/primitives.pir'
 .include 'src/core/object.pir'
 .include 'src/core/block.pir'
+.include 'src/core/primitives.pir'
 
 =back
 

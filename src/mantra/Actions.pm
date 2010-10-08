@@ -28,11 +28,6 @@ method statement_list($/) {
         $past.push($_.ast);
     }
 
-    # by default return self
-    #my $return_statement := PAST::Op.new( :pasttype<pirop>, :pirop<return> );
-    #$return_statement.push(PAST::Var.new( :name<self>, :scope<register> ) );
-    #$past.push($return_statement);
-
     make $past;
 }
 
@@ -422,7 +417,6 @@ method block_contents($/) {
     our $?BLOCK;
     our @?BLOCK;
 
-#    $?BLOCK.push( PAST::Var.new( :name<self>, :scope<parameter> ), :viviself<Undef> );
     for $<ident> {
         $?BLOCK.push( PAST::Var.new( :name($_), :scope<parameter> ) );
     }

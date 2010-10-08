@@ -1,13 +1,12 @@
 # $Id$
 
-=head1
+=head1 TITLE
 
 object.pir -- Mantra object
 
 =cut
 
-
-.HLL "mantra"
+.HLL 'mantra'
 
 .namespace []
 
@@ -19,6 +18,12 @@ object.pir -- Mantra object
 
 .namespace ['ProtoObject']
 
+.sub 'new' :method
+     $P1 = typeof self
+     $P2 = clone $P1
+     $P3 = new $P2
+     .return($P3)
+.end
 
 .sub 'addMethod:as:' :method
      .param string method_name
@@ -45,6 +50,7 @@ object.pir -- Mantra object
      store_lex '!retr_value', self
 
      $P2 = find_method self, method_name
+     if method_name == "new" goto method_call
      if method_name == "addMethod:as:" goto method_call
      if method_name == "execute:withArgs:" goto method_call
      capture_lex $P2

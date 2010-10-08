@@ -23,7 +23,6 @@ to the mantra compiler.
     .param pmc args
 
     load_language 'mantra'
-
     $P0 = compreg 'mantra'
     $P1 = $P0.'command_line'(args)
 .end

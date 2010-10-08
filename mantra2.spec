@@ -1,6 +1,6 @@
-Startup: Object new.
+@namespace: 'Core'.
 
-System import: 'Core.Startup'.
+Startup: Core.Object new.
 
 Startup 
    addParents: [ TestCase, Teton ];

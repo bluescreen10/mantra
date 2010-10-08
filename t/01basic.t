@@ -1,8 +1,3 @@
-Object addMethod: 'new' as: {
-       <new(self)>
-}.
-
-
 Startup: Object new.
 
 Startup 
