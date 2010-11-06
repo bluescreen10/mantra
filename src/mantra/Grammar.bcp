@@ -25,6 +25,9 @@ rule statement_list {
 
 ## Method defintion
 
+token unary_method {
+    <method_name=ident>
+}
 
 
 # Statement
@@ -44,20 +47,16 @@ rule expression {
     | <basic_expression>
 }
 
-rule return_statement {
-   '^' <basic_expression>
-}
+rule return_statement { '^' <basic_expression> }
 
 rule basic_expression {
     | <primitive>
-    | <message_expr>
-    | <primary>
+    | <primary> [ <message> ** ';' ]?
 }
 
+
 # Block
-rule block {
-   '{' ~ '}' <block_contents>
-}
+rule block { '{' ~ '}' <block_contents> }
 
 rule block_contents {
     <.begin_block>
@@ -65,81 +64,57 @@ rule block_contents {
 }
 
 token begin_block {
-   <?>
+    <?>
 }
 
 # /Block
 
-# Message
-
-rule message_expr {
-   <message_primary> [ <message> ** ';' ]
-}
-
-token message_primary {
-   <primary>
-}
-
 rule message {
-   | <keyword_expr>
-   | <binary_expr>
-   | <unary_expr>
+   | <keyword_first=keyword_message>
+   | <binary_first=binary_message>
+   | <unary_chain>
 }
 
-# /Message
-
-# Unary
-rule unary_expr {
-   [ <unary_msg> ]+ <binary_msg>* <keyword_msg>?
+rule unary_chain {
+   [ <unary_method> ]+
+   <binary_message>*
+   <keyword_message>?
 }
 
-token unary_msg {
-   <ident> <!before ':'>
+token binary_message {
+    <method_name=binary_method_name> <ws>
+    <primary>
+        [ \h* <unary_method>
+             [
+             | <?before <.ws> \w+ ':'>
+             | <?before '.'>
+             | <?before \s+>
+             ]
+        ]*
 }
 
-# /Unary
-
-# Binary
-
-rule binary_expr {
-   [ <binary_msg> ]+ <keyword_msg>?
+token keyword_message {
+    <method_name=ident> ':' <ws> <keyword_argument>
+    [ <ws> <method_name=ident> ':' <ws> <keyword_argument> ]*
 }
 
-rule binary_msg {
-   <binary_sel> <binary_arg>
+token keyword_argument {
+    <primary>
+        [ \h* <unary_method>
+              [
+              | <?before \w+ ':' >
+              | <?before \s+>
+              | <?before '.'>
+              ]
+        ]*
+        [ \h* <binary_message>
+              [
+              | <?before \w+ ':'>
+              | <?before \h*>
+              | <?before '.'>
+              ]
+        ]*
 }
-
-token binary_sel {
-     [ '!' | '%' | '+'  | '-' | '/' | '<' | '=' | '>'
-     | '?' | '$' | '\\' | '~' | '|' | '*' | ',' ]+
-}
-
-rule binary_arg {
-   <primary> <unary_msg>*
-}
-
-
-# /Binary
-
-# Keyword
-
-rule keyword_expr {
-   <keyword_msg>
-}
-
-rule keyword_msg {
-   [ <keyword_sel> <keyword_arg> ]+
-}
-
-token keyword_sel {
-   <ident> ':'
-}
-
-token keyword_arg {
-    <primary> [ <!keyword_msg> <unary_msg> ]* <binary_msg>*
-}
-
-# /Keyword
 
 rule primary {
      | <variable>
@@ -154,13 +129,12 @@ token variable {
     | <lexical_variable>
 }
 
-rule assignment {
-
-     <assignment_target> <basic_expression>
+token assignment {
+     <assignment_target> ':' \h* <basic_expression>
 }
 
-token assignment_target {
-     <!reserved_words><variable> ':'
+rule assignment_target {
+     <!reserved_words><variable>
 }
 
 token pseudo_variable_self {
@@ -179,8 +153,14 @@ token lexical_variable {
 # # Tokens
 
 token reserved_words {
+#     | 'Object'  #Do we really want object here?
      | 'null'
      | 'self'
+}
+
+token binary_method_name {
+     [ '!' | '%' | '+' | '-' | '/' | '<' | '=' | '>'
+     | '?' | '$' | '\\' | '~' | '|' | '*' | ',' ]+
 }
 
 token literal {

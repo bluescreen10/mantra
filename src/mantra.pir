@@ -43,7 +43,9 @@ object.
 .include 'src/gen_compiler.pir'
 .include 'src/gen_runtime.pir'
 .include 'src/core/object.pir'
-.include 'src/core/block.pir'
+#.include 'src/core/block.pir'
+#.include 'src/core/string.pir'
+#.include 'src/core/integer.pir'
 .include 'src/core/primitives.pir'
 
 =back

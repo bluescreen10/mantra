@@ -21,8 +21,8 @@ method begin($/) {
     Q:PIR {   $P0 = get_hll_global 'Object'
               unless null $P0 goto already_loaded
               setup_protoobject()
- #              load('Object')
-               load('System')
+#              load('Object')
+              load('System')
             already_loaded:
           };
 
@@ -74,11 +74,9 @@ method statement($/) {
 }
 
 method return_statement($/) {
-    make PAST::Op.new(
-        :pasttype<inline>,
-        :inline(
-            'store_lex ":return_value", %0',
-            '$P0 = find_lex ":return_address"',
+    make PAST::Op.new( :inline(
+            '   store_lex ":return_value", %0',
+            '   $P0 = find_lex ":return_address"',
             '.tailcall $P0()'
         ),
         $<basic_expression>.ast
@@ -88,12 +86,23 @@ method return_statement($/) {
 method basic_expression($/) {
     if $<primitive> {
         make $<primitive>.ast;
-    }
-    elsif $<primary> {
-        make $<primary>.ast;
-    }
-    elsif $<message_expr> {
-        make $<message_expr>.ast;
+    } elsif $<primary> {
+        if $<message> {
+            my $past := PAST::Stmts.new();
+#            my $primary := PAST::Op.new( :pasttype<inline>, :inline( ' .lex ":primary", %0'));
+#            $primary.push($<primary>.ast);
+#            $past.push($primary);
+            for $<message> {
+                $past.push($_.ast);
+                #Last in the chain
+                for $_.ast.iterator() {
+                }
+                $_.ast.unshift($<primary>.ast);
+            }
+            make $past;
+        } else {
+            make $<primary>.ast;
+        }
     }
 }
 
@@ -107,229 +116,178 @@ method expression($/) {
     }
 }
 
-# Message
-
-method message_expr($/) {
-    # Called when finished parsing messages, messages are an array with all
-    # cascaded messages to the same primary
-    our @TARGET_PRIMARY;
-
-    my $past := PAST::Stmts.new();
-
-    # Each message is a separated statement
-    for $<message> {
-        $past.push($_.ast);
-    }
-
-    # We need to remove the TARGET_PRIMARY from the list
-    @TARGET_PRIMARY.shift();
-
-    make $past;
-}
-
 method message($/) {
-    # Generate the AST for all type of messages
-    # Unary
-
-    if $<unary_expr> {
-        make $<unary_expr>.ast;
-    }
-    # Binary
-    elsif $<binary_expr> {
-        make $<binary_expr>.ast;
+    # Unary message chain
+    if $<unary_chain> {
+        make $<unary_chain>.ast
     }
 
-    # Keyword
-    elsif $<keyword_expr> {
-        make $<keyword_expr>.ast;
+    # Binary message chain
+    elsif $<binary_first> {
+        make $<binary_first>.ast;
+    }
+
+    # Keyword message
+    elsif $<keyword_first> {
+        make $<keyword_first>.ast;
     }
 }
 
-method message_primary($/) {
-    # We need to store the <primary> because in chained messages the target
-    # node ends up burried in the AST
-    our @TARGET_PRIMARY;
-    @TARGET_PRIMARY.unshift($<primary>.ast);
+method unary_chain($/) {
+
+    my $msg := PAST::Op.new(
+        :name('call_method'),
+        :pasttype('callmethod'),
+        :node($/)
+    );
+
+    $msg.push(
+        PAST::Val.new(
+            :returns<String>,
+            :value( $<unary_method>.shift )
+        )
+    );
+
+    for $<unary_method> {
+        my $next := PAST::Op.new( :pasttype<callmethod>, :name<call_method> );
+#        $msg.unshift($next);
+        $next.push( PAST::Val.new( :returns<String>, :value($_) ) );
+        $next.unshift( $msg );
+        $msg := $next;
+    }
+
+        # for $<binary_second> {
+        #     my $message := PAST::Val.new(
+        #         :returns<String>,
+        #         :value($_<method_name>)
+        #     );
+
+        #     my $next := PAST::Op.new(
+        #         :name('call_method'),
+        #         :pasttype('callmethod'),
+        #     );
+
+        #     $next.push($past);
+        #     $next.push($message);
+        #     $next.push($_<primary>.ast);
+        #     $past := $next;
+        # }
+
+        # if $<keyword_third> {
+        #     say("Keyworkd third:"~$<keyword_third>[0]);
+        #     my $next := $<keyword_third>[0].ast;
+        #     $next.unshift($past);
+        #     $past := $next;
+        # }
+     make $msg;
 }
 
-# /Message
+method binary_message($/) {
+    my $argument;
 
-# Unary
+    for $<unary_method> {
+        my $message := PAST::Val.new( :returns<String>,
+                                      :value($_) );
+        if $argument {
+            my $next := PAST::Op.new(
+                :name('call_method'),
+                :pasttype('callmethod'),
+                :node($/)
+            );
 
-method build_unary_msg( $reciever, $selector, $node ) {
-    # Builds the AST of an unary msg call
+            $next.push($argument);
+            $next.push($message);
+            $argument := $next;
+        } else {
+
+            $argument := PAST::Op.new(
+                :name('call_method'),
+                :pasttype('callmethod'),
+                :node($/)
+            );
+            $argument.push($<primary>.ast);
+            $argument.push($message);
+        }
+    }
+
+    unless $argument {
+        $argument := $<primary>.ast;
+    }
+
     my $past := PAST::Op.new(
-        :pasttype<callmethod>,
-        :name<call_method>,
-        :node($node)
+        :name('call_method'),
+        :pasttype('callmethod'),
+        :node($/)
     );
 
-    $past.push($reciever);
-    $past.push( PAST::Val.new( :returns<String>, :value($selector) ) );
-
-    return $past;
-}
-
-method unary_expr($/) {
-    # Generate the AST for unary expressions
-    our @TARGET_PRIMARY;
-
-    # First message
-    my $past := self.build_unary_msg(
-        @TARGET_PRIMARY[0],   # Reciever
-        $<unary_msg>.shift(), # Selector
-        $/                    # Node
+    $past.push(
+        PAST::Val.new(
+            :returns<String>,
+            :value($<method_name>)
+        )
     );
 
-    # Chained unary messages
-    for $<unary_msg> {
-        my $chained := self.build_unary_msg( $past, $_, $/);
-        $past := $chained;
-    }
-
-    # Chained binary messages
-    for $<binary_msg> {
-        my $chained := self.build_binary_msg(
-            $past,              # Reciever
-            $_<binary_sel>,     # Selector
-            $_<binary_arg>.ast, # Argument
-            $/                  # Node
-        );
-
-        $past := $chained;
-    }
-
-    # Chained keyword message
-    for $<keyword_msg> {
-        my $chained := self.build_keyword_msg(
-            $past,
-            pir::join('',$_<keyword_sel>),
-            $_<keyword_arg>,
-            $/
-        );
-
-        $past := $chained;
-    }
-
-
-    make $past;
-}
-
-# /Unary
-
-# Binary
-method build_binary_msg( $reciever, $selector, $argument, $node ){
-    # Builds the AST of an binary msg call
-    my $past := PAST::Op.new(
-        :pasttype<callmethod>,
-        :name<call_method>,
-        :node($node)
-    );
-
-    $past.push($reciever);
-    $past.push( PAST::Val.new( :returns<String>, :value($selector) ) );
     $past.push($argument);
-
-    return $past;
-}
-
-method binary_expr($/) {
-    # Generate AST for binary expressions
-    our @TARGET_PRIMARY;
-
-    # First message
-    my $msg := $<binary_msg>.shift();
-
-    my $past := self.build_binary_msg(
-        @TARGET_PRIMARY[0],   # Reciever
-        $msg<binary_sel>,     # Selector
-        $msg<binary_arg>.ast, # Argument
-        $/                    # Node
-    );
-
-    # Chained binary messages
-    for $<binary_msg> {
-        my $chained := self.build_binary_msg(
-            $past,              # Reciever
-            $_<binary_sel>,     # Selector
-            $_<binary_arg>.ast, # Argument
-            $/                  # Node
-        );
-
-        $past := $chained;
-    }
-
-    # Chained keyword message
-    for $<keyword_msg> {
-        my $chained := self.build_keyword_msg(
-            $past,
-            pir::join('',$_<keyword_sel>),
-            $_<keyword_arg>,
-            $/
-        );
-
-        $past := $chained;
-    }
-
     make $past;
+
 }
 
-method binary_arg($/) {
-    # Generates the AST for binary arg
-
-    # TODO: Handle chained msg;
-    make $<primary>.ast;
-}
-
-# /Binary
-
-# Keyword
-method build_keyword_msg( $reciever, $selector, $arguments, $node ) {
-    # Generate the AST for keyword messages
-
+method keyword_message($/) {
     my $past := PAST::Op.new(
-        :pasttype<callmethod>,
-        :name<call_method>,
-        :node($node)
+        :name('call_method'),
+        :pasttype('callmethod'),
+        :node($/)
     );
-
-    $past.push($reciever);
-    $past.push( PAST::Val.new( :returns<String>, :value($selector) ) );
-
-    for $arguments {
-        $past.push($_.ast);
+    $past.push(PAST::Val.new( :returns<String>,
+                              :value(pir::join(':',$<method_name>)~':') ) );
+    for $<keyword_argument> {
+        $past.push( $_.ast );
     }
-
-    return $past;
-}
-
-method keyword_expr($/) {
-    # Generate the AST for keyword expressions
-    our @TARGET_PRIMARY;
-
-    # Message tokens
-    my $msg := $<keyword_msg>;
-
-    # Message call
-    my $past := self.build_keyword_msg(
-        @TARGET_PRIMARY[0],                # Reciever
-        pir::join('', $msg<keyword_sel> ), # Selector
-        $msg<keyword_arg>,                 # Arguments
-        $/                                 # Node
-    );
-
     make $past;
 }
 
-method keyword_arg($/) {
-    # Generate the AST for keyword argument
+method keyword_argument($/) {
+    my $primary;
+    for $<unary_method> {
+        my $message := PAST::Val.new( :returns<String>,
+                                      :value($_) );
+        if $primary {
+#            my $next := PAST::Op.new( :name('!call_method'),
+            my $next := PAST::Op.new( :name('call_method'),
+                                      :pasttype('callmethod'),
+                                      :node($/) );
+            $next.push($primary);
+            $next.push($message);
+            $primary := $next;
+        } else {
+#            $primary := PAST::Op.new( :name('!call_method'),
+            $primary := PAST::Op.new( :name('call_method'),
+                                      :pasttype('callmethod'),
+                                      :node($/) );
+            $primary.push($<primary>.ast);
+            $primary.push($message);
+        }
+    }
 
-    # TODO: Chained message to the primary
-    make $<primary>.ast;
+    unless $primary {
+        $primary := $<primary>.ast;
+    }
 
+    my $past;
+
+    for $<binary_message> {
+        $past := $_.ast;
+        $past.unshift($primary);
+        $primary := $past;
+    }
+
+        if $past {
+            make $past;
+        } else {
+            make $primary
+        }
 }
 
-# Primary
 method primary($/) {
     our @?BLOCK;
     our $?BLOCK;
@@ -426,6 +384,8 @@ method is_global($variable) {
 
     for @?BLOCK {
         my $hash := $_.symbol( $variable.name() );
+        # say("name:"~$variable.name());
+        # say("scope:"~$hash<scope>);
         if $_.symbol( $variable.name() &&
            $_.symbol( $variable.name() ) eq "package" ) {
             return 1;
@@ -476,16 +436,12 @@ method assignment($/) {
     }
 
     $variable.lvalue(1);
+    my $value := $<basic_expression>.ast;
 
-    my $past :=  PAST::Op.new(
-        :pasttype<bind>,
-        :node($/)
-    );
-
-    $past.push( $variable );
-    $past.push( $<basic_expression>.ast );
-
-    make $past;
+    make PAST::Op.new( $variable,
+                       $value,
+                       :pasttype<bind>,
+                       :node($/) );
 }
 
 method assignment_target($/) {
