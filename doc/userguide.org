@@ -1,0 +1,21 @@
+Mantra User Guide
+
+* Introduction
+Mantra is a multi-platform General Purporse Language inspired from several languages but mainly in Smalltalk and Perl. Mantra is a Prototype-oriented language.
+Typically Object-oriented languages are built using Classes and Objects, in this paradigm objects are nothing but data structures that hold /state/ while classes hold the behavior. In languages like Smalltalk classes are also objects - instances of /Class/ object.
+
+* Basic Syntax
+** Hello World
+Here is an example of "Hello World" program in Mantra.
+\\
+_HelloWorld__.__ma_
+#+BEGIN_EXAMPLE
+#!mantra
+
+System out: 'Hello World!\n'.
+#+END_EXAMPLE
+\\
+This simple program sends the *out:* message to the global object *System* with the *Hello World!\n* string as parameter, and that prints /Hello World!/ in the console.
+** Variables
+*** Global variables
+Variables defined outside of any block are global variables, that means that those variables are accessible by any block

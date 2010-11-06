@@ -1,9 +1,9 @@
 Startup: Object new.
 
 Startup 
-    addMethod: 'void' as: { 'asdas' };
-    addMethod: 'plan' as: { <say('1..1')> };
-    addMethod: 'results' as: { <say('ok 1 Basic test')> };
+    addMethod: 'void'    as: { };
+    addMethod: 'plan'    as: { System out: '1..1' };
+    addMethod: 'results' as: { System out: 'ok 1 Basic test' };
     plan;
     results.
 

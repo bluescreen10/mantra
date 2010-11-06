@@ -1,0 +1,55 @@
+% Created 2010-10-11 Mon 16:15
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{float}
+\usepackage{wrapfig}
+\usepackage{soul}
+\usepackage{amssymb}
+\usepackage{hyperref}
+
+
+\title{Mantra User Guide}
+\author{Mariano Wahlmann}
+\date{11 October 2010}
+
+\begin{document}
+
+\maketitle
+
+\setcounter{tocdepth}{3}
+\tableofcontents
+\vspace*{1cm}
+
+\section{Introduction}
+\label{sec-1}
+
+Mantra is a multi-platform General Purporse Language inspired from several languages but mainly in Smalltalk and Perl. Mantra is a Prototype-oriented language.
+Typically Object-oriented languages are built using Classes and Objects, in this paradigm objects are nothing but data structures that hold \emph{state} while classes hold the behavior. In languages like Smalltalk classes are also objects - instances of \emph{Class} object.
+
+\section{Basic Syntax}
+\label{sec-2}
+
+\subsection{Hello World}
+\label{sec-2.1}
+
+Here is an example of ``Hello World'' program in Mantra.
+\\
+\underline{HelloWorld_\}.__ma\_{}
+
+\begin{verbatim}
+#!mantra
+
+System out: 'Hello World!\n'.
+\end{verbatim}
+
+
+\\
+This simple program sends the \textbf{out:} message to the global object \textbf{System} with the \textbf{Hello World!\n} string as parameter, and that prints \emph{Hello World!} in the console.
+\subsection{Variable Scope}
+\label{sec-2.2}
+
+
+\end{document}
