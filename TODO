@@ -1,0 +1,10 @@
+Release 0.1
+* Library Loader ( Libraries loaded by default )
+* Other literals: Booleans ( true, false ), Numbers ( decimal, floats, complex ), Strings, Collections
+* Introspection: methods, variables
+* Error throwing/catching
+* Decide meta-model
+* Primitives
+* I/O Subsystem
+* Standard library
+* Update language specs
