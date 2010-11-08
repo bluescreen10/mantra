@@ -22,3 +22,19 @@ Startup
    addMessage: #addParents: argument: 'parents' {
        parents do: { parent | self addParent: parent }
    }.
+
+
+#######################################3
+Startup: object new.
+
+Startup 
+   atMethod: 'queVuelvaCarlos:' put: { param1 param2 |
+       aCollection do: { e | 
+           System out: e asString.
+           param1: 'Scope override'
+       }
+   };
+
+   atMethod: 'toStringWith:' put: { aParam |
+       a 
+   }.

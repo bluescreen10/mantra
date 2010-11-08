@@ -16,7 +16,7 @@ object.pir -- Mantra object
      $P0.'add_attribute'('proto')
      $P0.'add_attribute'('state')
      $P0.'add_attribute'('value')
-     $P0.'add_attribute'('methods')
+     $P0.'add_attribute'('messages')
 
      # Register Object
      $P0 = new 'ProtoObject'
@@ -39,10 +39,10 @@ object.pir -- Mantra object
      object = get_hll_global 'Object'
      
      .const 'Sub' $P0 = 'new'
-     object.'add_method'('new', $P0 ) 
+     object.'set_message'('new', $P0 ) 
 
-     .const 'Sub' $P0 = 'addMethod:as:'
-     object.'add_method'('addMethod:as:', $P0 ) 
+     .const 'Sub' $P0 = 'message:as:'
+     object.'set_message'('message:as:', $P0 ) 
 
 .end
 
@@ -55,18 +55,18 @@ object.pir -- Mantra object
 .end
 
 
-.sub '' :anon :subid('addMethod:as:')
+.sub '' :anon :subid('message:as:')
      .param pmc name
-     .param pmc subref
+     .param pmc block
 
      .local pmc selfa, method_name, method_ref
 
      $P0 = find_lex 'self'
 
      method_name = name.'get_value'()
-     method_ref = subref.'get_value'()
+     method_ref = block.'get_value'()
 
-     $P1 = find_method $P0, 'add_method'
+     $P1 = find_method $P0, 'set_message'
 
      $P0.$P1(method_name, method_ref)
      .return($P0)
@@ -77,21 +77,21 @@ object.pir -- Mantra object
 .sub '__init__' :method
 
      $P0 = root_new [ 'parrot' ; 'Hash' ]
-     setattribute self, 'methods', $P0
+     setattribute self, 'messages', $P0
 
      $P1 = root_new [ 'parrot' ; 'Hash' ]
      setattribute self, 'state', $P0
 
 .end
 
-.sub 'add_method' :method
+.sub 'set_message' :method
      .param pmc name
-     .param pmc subref 
+     .param pmc block 
 
-     .local pmc methods
-     methods = getattribute self, 'methods'
+     .local pmc messages
+     messages = getattribute self, 'messages'
      
-     methods[name] = subref
+     messages[name] = block
 
 .end
 
@@ -99,15 +99,15 @@ object.pir -- Mantra object
      .local pmc new_object
      new_object = new 'ProtoObject'
 
-     .local pmc state, value, methods
+     .local pmc state, value, messages
 
      $P0 = getattribute self, 'state'
      state = clone $P0
      setattribute new_object, 'state', state
 
-     $P0 = getattribute self, 'methods'
-     methods = clone $P0
-     setattribute new_object, 'methods', methods
+     $P0 = getattribute self, 'messages'
+     messages = clone $P0
+     setattribute new_object, 'messages', messages
 
      $P0 = getattribute self, 'proto'
      setattribute new_object, 'proto', $P0
@@ -118,20 +118,20 @@ object.pir -- Mantra object
      .return(new_object)
 .end
 
-.sub 'call_method' :method
+.sub 'send_message' :method
      .param pmc name
      .param pmc params :slurpy :optional
 
-     .local pmc methods
-     methods = getattribute self,'methods'
-     $P0 = methods[name]
+     .local pmc messages
+     messages = getattribute self,'messages'
+     $P0 = messages[name]
      
      unless null $P0 goto setup_call
 
      # TODO: Throw an exception
      .local pmc msg
      msg = new 'String'
-     msg = 'Method not found -> '
+     msg = 'Message not found -> '
      msg = concat msg, name
      die msg
 

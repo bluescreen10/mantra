@@ -21,8 +21,7 @@ method begin($/) {
     Q:PIR {   $P0 = get_hll_global 'Object'
               unless null $P0 goto already_loaded
               setup_protoobject()
- #              load('Object')
-               load('System')
+              load('System')
             already_loaded:
           };
 
@@ -60,20 +59,14 @@ method TOP($/) {
 method statement_list($/) {
     my $past := PAST::Stmts.new();
 
-    for $<statement> {
+    for $<expr> {
         $past.push($_.ast);
     }
 
     make $past;
 }
 
-method statement($/) {
-    if $<expression> {
-        make $<expression>.ast;
-    }
-}
-
-method return_statement($/) {
+method return_expr($/) {
     make PAST::Op.new(
         :pasttype<inline>,
         :inline(
@@ -81,75 +74,60 @@ method return_statement($/) {
             '$P0 = find_lex ":return_address"',
             '.tailcall $P0()'
         ),
-        $<basic_expression>.ast
+        $<basic_expr>.ast
     );
 }
 
-method basic_expression($/) {
+# Expressions
+
+method expr($/) {
+    # Generates the AST for the expression
+    if $<bind_expr> {
+        make $<bind_expr>.ast;
+    }
+    elsif $<return_expr> {
+        make $<return_expr>.ast;
+    }
+    elsif $<basic_expr> {
+        make $<basic_expr>.ast;
+    }
+}
+
+method basic_expr($/) {
+    # Generate the AST for primitive, primary, message send
+    our @MESSAGE_TARGET;
+
     if $<primitive> {
         make $<primitive>.ast;
     }
-    elsif $<primary> {
-        make $<primary>.ast;
-    }
-    elsif $<message_expr> {
-        make $<message_expr>.ast;
+    else {
+        # We need to remove the first primary from the MESSAGE_TARGET list
+        my $past := @MESSAGE_TARGET.shift();
+
+        if $<message> {
+            $past := PAST::Stmts.new();
+
+            # Chained messages
+            for $<message> {
+                $past.push($_.ast);
+            }
+
+            make $past;
+        }
+
+        make $past;
     }
 }
 
-method expression($/) {
-    if $<basic_expression> {
-        make $<basic_expression>.ast;
-    } elsif $<assignment> {
-        make $<assignment>.ast;
-    } elsif $<return_statement> {
-        make $<return_statement>.ast;
-    }
-}
+# /Expressions
 
 # Message
 
-method message_expr($/) {
-    # Called when finished parsing messages, messages are an array with all
-    # cascaded messages to the same primary
-    our @TARGET_PRIMARY;
-
-    my $past := PAST::Stmts.new();
-
-    # Each message is a separated statement
-    for $<message> {
-        $past.push($_.ast);
-    }
-
-    # We need to remove the TARGET_PRIMARY from the list
-    @TARGET_PRIMARY.shift();
-
-    make $past;
-}
-
-method message($/) {
-    # Generate the AST for all type of messages
-    # Unary
-
-    if $<unary_expr> {
-        make $<unary_expr>.ast;
-    }
-    # Binary
-    elsif $<binary_expr> {
-        make $<binary_expr>.ast;
-    }
-
-    # Keyword
-    elsif $<keyword_expr> {
-        make $<keyword_expr>.ast;
-    }
-}
-
-method message_primary($/) {
+method message_target($/) {
     # We need to store the <primary> because in chained messages the target
     # node ends up burried in the AST
-    our @TARGET_PRIMARY;
-    @TARGET_PRIMARY.unshift($<primary>.ast);
+    our @MESSAGE_TARGET;
+    @MESSAGE_TARGET.unshift($<primary>.ast);
 }
 
 # /Message
@@ -160,7 +138,7 @@ method build_unary_msg( $reciever, $selector, $node ) {
     # Builds the AST of an unary msg call
     my $past := PAST::Op.new(
         :pasttype<callmethod>,
-        :name<call_method>,
+        :name<send_message>,
         :node($node)
     );
 
@@ -170,13 +148,13 @@ method build_unary_msg( $reciever, $selector, $node ) {
     return $past;
 }
 
-method unary_expr($/) {
+method message:sym<unary>($/) {
     # Generate the AST for unary expressions
-    our @TARGET_PRIMARY;
+    our @MESSAGE_TARGET;
 
     # First message
     my $past := self.build_unary_msg(
-        @TARGET_PRIMARY[0],   # Reciever
+        @MESSAGE_TARGET[0],   # Reciever
         $<unary_msg>.shift(), # Selector
         $/                    # Node
     );
@@ -222,7 +200,7 @@ method build_binary_msg( $reciever, $selector, $argument, $node ){
     # Builds the AST of an binary msg call
     my $past := PAST::Op.new(
         :pasttype<callmethod>,
-        :name<call_method>,
+        :name<send_message>,
         :node($node)
     );
 
@@ -233,15 +211,15 @@ method build_binary_msg( $reciever, $selector, $argument, $node ){
     return $past;
 }
 
-method binary_expr($/) {
+method message:sym<binary>($/) {
     # Generate AST for binary expressions
-    our @TARGET_PRIMARY;
+    our @MESSAGE_TARGET;
 
     # First message
     my $msg := $<binary_msg>.shift();
 
     my $past := self.build_binary_msg(
-        @TARGET_PRIMARY[0],   # Reciever
+        @MESSAGE_TARGET[0],   # Reciever
         $msg<binary_sel>,     # Selector
         $msg<binary_arg>.ast, # Argument
         $/                    # Node
@@ -289,7 +267,7 @@ method build_keyword_msg( $reciever, $selector, $arguments, $node ) {
 
     my $past := PAST::Op.new(
         :pasttype<callmethod>,
-        :name<call_method>,
+        :name<send_message>,
         :node($node)
     );
 
@@ -303,16 +281,16 @@ method build_keyword_msg( $reciever, $selector, $arguments, $node ) {
     return $past;
 }
 
-method keyword_expr($/) {
+method message:sym<keyword>($/) {
     # Generate the AST for keyword expressions
-    our @TARGET_PRIMARY;
+    our @MESSAGE_TARGET;
 
     # Message tokens
     my $msg := $<keyword_msg>;
 
     # Message call
     my $past := self.build_keyword_msg(
-        @TARGET_PRIMARY[0],                # Reciever
+        @MESSAGE_TARGET[0],                # Reciever
         pir::join('', $msg<keyword_sel> ), # Selector
         $msg<keyword_arg>,                 # Arguments
         $/                                 # Node
@@ -350,8 +328,8 @@ method primary($/) {
     elsif $<literal> {
         make $<literal>.ast;
     }
-    elsif $<basic_expression> {
-        make $<basic_expression>.ast
+    elsif $<basic_expr> {
+        make $<basic_expr>.ast
     }
     elsif $<block> {
         make $<block>.ast;
@@ -448,12 +426,10 @@ method is_registered($variable) {
     return 0;
 }
 
-method assignment($/) {
+method bind_expr($/) {
     our @?BLOCK;
     our $?BLOCK;
-
-    my $variable := $<assignment_target>.ast;
-
+    my $variable := $<bind_target>.ast;
     # Dynamic Scope
     unless $variable.scope() {
         # Global or lexicals
@@ -483,12 +459,12 @@ method assignment($/) {
     );
 
     $past.push( $variable );
-    $past.push( $<basic_expression>.ast );
+    $past.push( $<basic_expr>.ast );
 
     make $past;
 }
 
-method assignment_target($/) {
+method bind_target($/) {
     make $<variable>.ast;
 }
 
@@ -497,13 +473,13 @@ method lexical_variable($/) {
 }
 
 
-# BLOCK
+# Block
+
 method begin_block($/) {
     our $?BLOCK;
     our @?BLOCK;
 
     $?BLOCK := PAST::Block.new(:blocktype<declaration>);
-#    $?BLOCK.closure(1);
     @?BLOCK.push($?BLOCK);
 
 }
@@ -512,7 +488,7 @@ method block($/) {
     our $?BLOCK;
     our @?BLOCK;
 
-    @?BLOCK.pop();
+    my $contents := @?BLOCK.pop();
 
     $?BLOCK := @?BLOCK[-1];
 
@@ -523,7 +499,7 @@ method block($/) {
     );
 
     $past.push(PAST::Var.new( :name<Block>, :scope<package> ));
-    $past.push($<block_contents>.ast);
+    $past.push($contents);
     make $past;
 }
 
@@ -539,6 +515,8 @@ method block_contents($/) {
     $?BLOCK.push($<statement_list>.ast);
     make $?BLOCK;
 }
+
+# /Block
 
 method string_constant($/) {
     my $past := $<quote>.ast;

@@ -1,14 +1,14 @@
 false
-    addMethod: 'ifFalse:'  as: { block | ^ block call };
+    message: 'ifFalse:'  as: { block | ^ block call };
 
-#    addMethod: 'ifTrue:' as: { block | ^ self }.
+    message: 'ifTrue:' as: { block | };
 
-    addMethod: 'ifTrue:ifFalse:' as: { trueBlock falseBlock | 
+    message: 'ifTrue:ifFalse:' as: { trueBlock falseBlock | 
        ^ falseBlock call 
     };
 
-    addMethod: 'ifFalse:ifTrue:' as: { falseBlock trueBlock | 
+    message: 'ifFalse:ifTrue:' as: { falseBlock trueBlock | 
        ^ falseBlock call
     };
 
-    addMethod: 'not' as: { ^ true }.
+    message: 'not' as: { ^ true }.

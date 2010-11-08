@@ -1,10 +1,11 @@
+" Boolean true"
 true
-   addMethod: 'ifTrue:'  as: { block | ^ block call };
+   message: 'ifTrue:'  as: { block | ^ block call };
 
-#   addMethod: 'ifFalse:' as: { block | ^ self }.
+   message: 'ifFalse:' as: { block |  };
 
-    addMethod: 'ifTrue:ifFalse:' as: { trueBlock falseBlock | ^ trueBlock call };
+   message: 'ifTrue:ifFalse:' as: { trueBlock falseBlock | ^ trueBlock call };
 
-    addMethod: 'ifFalse:ifTrue:' as: { falseBlock trueBlock | ^ trueBlock call };
+   message: 'ifFalse:ifTrue:' as: { falseBlock trueBlock | ^ trueBlock call };
     
-    addMethod: 'not' as: { ^ false }.
+   message: 'not' as: { ^ false }.

@@ -1,12 +1,12 @@
 String 
-   addMethod: ',' as: { anString | 
-       # Concatenate anString with the reciever
-       # and returns the result as a new object
+   message: ',' as: { anString | 
+       "Concatenate anString with the reciever and 
+        returns the result as a new object"
 
        ^ <concat(self,anString)> 
    };
 
-    addMethod: 'copyFrom:to:' as: { start end |
-
+   message: 'copyFrom:to:' as: { start end |
+        "Copies part parts of the string between start and end"
         ^ <stringCopyFromTo(self,start,end)>.
-    }.
+   }.

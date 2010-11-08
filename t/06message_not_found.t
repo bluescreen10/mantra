@@ -1,9 +1,8 @@
-# "MyObject"
 MyObject: Object new.
 
 MyObject 
-    addMethod: 'methodNotFound:' as: { methodName |
-       # "Override methodNotFound"
+    message: 'methodNotFound:' as: { methodName |
+       "Override methodNotFound"
        System out: 'ok ', 
                    (@count asString) ,
                    ' method:"',
@@ -12,21 +11,21 @@ MyObject
        @count: @count + 1.
     };
 
-    addMethod: 'initialize' as: {
+    message: 'initialize' as: {
        # "initialize vars"
        @count: 0.
     }.
 
 
-# "Test plan"
+"Test plan"
 System out: '1..3'.
 
-# Call an unexistent methods
-#Unary
+"" Call an unexistent methods
+"" Unary
 MyObject invalidUnaryMethod. 
 
-# Binary
+"" Binary
 MyObject + 1.
 
-# Keyword
+"" Keyword
 MyObject invaliKeywordMethod: 1.

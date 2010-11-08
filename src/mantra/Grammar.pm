@@ -18,41 +18,40 @@ token begin {
 
 # Statement list
 rule statement_list {
-    [ <statement> ** <dot> ]*
+    <dot>*
+    [ <expr> ** <dot> ]*
+    <dot>*
 }
 
 ## General grammars
 
 ## Method defintion
 
-
-
-# Statement
-rule statement {
-    <dot>*
-    <expression>
-    <dot>*
-}
-
 token dot {
     '.'
 }
 
-rule expression {
-    | <assignment>
-    | <return_statement>
-    | <basic_expression>
+# Expression
+
+token expr {
+   | <bind_expr>
+   | <return_expr>
+   | <basic_expr>
 }
 
-rule return_statement {
-   '^' <basic_expression>
+
+rule return_expr { '^' <basic_expr> }
+
+# /Expression
+
+# Basic Expression
+
+token basic_expr {
+   |<primitive>
+   |<message_target> [ <message> ** ';']?
 }
 
-rule basic_expression {
-    | <primitive>
-    | <message_expr>
-    | <primary>
-}
+# /Basic Expression
 
 # Block
 rule block {
@@ -61,7 +60,8 @@ rule block {
 
 rule block_contents {
     <.begin_block>
-    [ <ident> <ident>* '|' ]? <statement_list>
+    [ <ident> <ident>* '|' ]?
+    <statement_list>
 }
 
 token begin_block {
@@ -72,24 +72,17 @@ token begin_block {
 
 # Message
 
-rule message_expr {
-   <message_primary> [ <message> ** ';' ]
-}
-
-token message_primary {
+token message_target {
    <primary>
 }
 
-rule message {
-   | <keyword_expr>
-   | <binary_expr>
-   | <unary_expr>
-}
+proto token message { <...> }
 
 # /Message
 
 # Unary
-rule unary_expr {
+
+rule message:sym<unary> {
    [ <unary_msg> ]+ <binary_msg>* <keyword_msg>?
 }
 
@@ -101,7 +94,7 @@ token unary_msg {
 
 # Binary
 
-rule binary_expr {
+rule message:sym<binary> {
    [ <binary_msg> ]+ <keyword_msg>?
 }
 
@@ -118,12 +111,11 @@ rule binary_arg {
    <primary> <unary_msg>*
 }
 
-
 # /Binary
 
 # Keyword
 
-rule keyword_expr {
+rule message:sym<keyword> {
    <keyword_msg>
 }
 
@@ -136,16 +128,16 @@ token keyword_sel {
 }
 
 token keyword_arg {
-    <primary> [ <!keyword_msg> <unary_msg> ]* <binary_msg>*
+    <primary> [ <unary_msg> ]* <binary_msg>*
 }
 
 # /Keyword
 
 rule primary {
+     | <block>
      | <variable>
      | <literal>
-     | '(' ~ ')' <basic_expression>
-     | <block>
+     | '(' ~ ')' <basic_expr>
 }
 
 token variable {
@@ -154,14 +146,15 @@ token variable {
     | <lexical_variable>
 }
 
-rule assignment {
+# Bind
 
-     <assignment_target> <basic_expression>
-}
+rule bind_expr { <bind_target> <basic_expr> }
 
-token assignment_target {
-     <!reserved_words><variable> ':'
-}
+token bind_target { <!reserved_words><variable> ':' }
+
+token reserved_words { 'self' }
+
+# /Bind
 
 token pseudo_variable_self {
     'self'
@@ -178,10 +171,7 @@ token lexical_variable {
 
 # # Tokens
 
-token reserved_words {
-     | 'null'
-     | 'self'
-}
+
 
 token literal {
     | <string_constant>
@@ -232,5 +222,5 @@ token primitive_name {
 ##  you may want to replace it with something appropriate
 token ws {
     <!ww>
-    [ '#' \N* \n? | \s+ | \n+ ]*
+    [ '"' '"' \N* \n? | '"' .*? '"' | \s+ | \n+ ]*
 }

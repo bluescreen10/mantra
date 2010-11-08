@@ -1,6 +1,4 @@
-#Block: Object new.
-
 Block
-   addMethod: 'call' as: {
+   message: 'call' as: {
       ^ <blockcall(self)>
    }

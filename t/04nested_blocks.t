@@ -1,14 +1,18 @@
 Test: Object new.
+
 Test 
-    addMethod: 'say:' as: { aString | System out: aString };
-    addMethod: 'call' as: {
-       a: '1..1'.
-       block: {
-            self say: a.
+   message: 'say:' as: { anString | System out: anString };
+  
+   message: 'call' as: {
+      plan: '1..1'.
+      block: {
+         System out: plan.
             ^ self.
-       }.
-       block call.
-       self say: 'not ok 1 Should not get here'
-    };
-    call;
-    say: 'ok 1 nested blocks'.
+      }.
+      block call.
+      System out: 'not ok 1 Should not get here'
+   }.
+
+Test
+   call;
+   say: 'ok 1 nested blocks'.
